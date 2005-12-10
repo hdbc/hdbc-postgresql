@@ -1,0 +1,7 @@
+Add a explicit close operation (don't call unbind twice)
+
+handle NULLs in strings
+
+types
+
+keep a list of open statements so they can be closed on a call to close.
