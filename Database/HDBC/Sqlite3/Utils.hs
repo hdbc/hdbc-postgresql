@@ -17,26 +17,10 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 -}
 
-{- |
-   Module     : Database.HDBC.Sqlite3
-   Copyright  : Copyright (C) 2005 John Goerzen
-   License    : GNU LGPL, version 2 or above
+module Database.HDBC.Sqlite3.Utils where
 
-   Maintainer : John Goerzen <jgoerzen@complete.org>
-   Stability  : provisional
-   Portability: portable
+checkError
 
-HDBC driver interface for Sqlite 3.x.
-
-Written by John Goerzen, jgoerzen\@complete.org
--}
-
-module Database.HDBC.Sqlite3
-    (
-     connectSqlite3
-    )
-
-where
-
-import Database.HDBC.Sqlite3.Connection(connectSqlite3)
+foreign import ccall unsafe "sqlite3.h sqlite3_errmsg"
+  sqlite3_errmsg :: (Ptr CSqlite3) -> IO CString
 
