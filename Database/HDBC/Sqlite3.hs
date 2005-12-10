@@ -50,9 +50,9 @@ connectSqlite3 fp =
         (\cs -> alloca 
          (\(p::Ptr (Ptr CSqlite3)) ->
               do res <- sqlite3_open cs p
-                 checkError res
+                 checkError ("connectSqlite3 " ++ fp) res
                  o <- peek p
-                 fptr <- newForeignPtr sqlite3_finalize p
+                 fptr <- newForeignPtr sqlite3_closeptr o
                  mkConn fptr
          )
         )
@@ -66,6 +66,33 @@ mkConn obj =
                             rollback = frollback obj,
                             run = frun obj,
                             prepare = fprepare obj}
+
+--------------------------------------------------
+-- Guts here
+--------------------------------------------------
+
+begin_transaction :: Sqlite3 -> IO ()
+begin_transaction o = run o "BEGIN"
+
+fcommit o = do frun o "COMMIT"
+               begin_transaction
+frollback o =  do frun o "COMMIT"
+                  begin_transaction
+fdisconnect o = withForeignPtr (\p -> sqlite3_finalize p)
+
+fprepare o str = withForeignPtr 
+  (\p -> withCStringLen
+   (\cslen -> alloca
+    (\(newp::Ptr (Ptr CStmt)) ->
+     (do res <- sqlite3_prepare p (fst cslen) (snd cslen) newp nullPtr
+         checkError ("prepare " ++ str) res
+         o <- peek newp
+         fptr <- newForeignPtr sqlite3_finalizeptr o
+         mkstmt fptr
+     )
+     )
+   )
+   )
                     
 data CSqlite3
 type Sqlite3 = ForeignPtr CSqlite3
@@ -80,4 +107,13 @@ foreign import ccall unsafe "sqlite3.h sqlite3_errmsg"
   sqlite3_errmsg :: (Ptr CSqlite3) -> IO CString
 
 foreign import ccall unsafe "sqlite3.h &sqlite3_finalize"
-  sqlite3_finalize :: FunPtr (Ptr CStmt) -> IO Cint
+  sqlite3_finalizeptr :: FunPtr ((Ptr CStmt) -> IO CInt)
+
+foreign import ccall unsafe "sqlite3.h &sqlite3_close"
+  sqlite3_closeptr :: FunPtr ((Ptr CSqlite3) -> IO CInt)
+
+foreign import ccall unsafe "sqlite3.h sqlite3_finalize"
+  sqlite3_finalize :: (Ptr CStmt) -> IO Cint
+
+foreign import ccall unsafe "sqlite3.h sqlite3_prepare"
+  sqlite3_prepare :: (Ptr CSqlite3) -> CString -> CInt -> Ptr (Ptr CStmt) -> Ptr (Ptr CString)
