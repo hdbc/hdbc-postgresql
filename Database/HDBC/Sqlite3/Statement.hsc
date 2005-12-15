@@ -20,10 +20,16 @@ module Database.HDBC.Sqlite3.Statement where
 import Database.HDBC.Types
 import Database.HDBC
 import Database.HDBC.Sqlite3.Types
+import Database.HDBC.Sqlite3.Utils
 import Foreign.C.Types
 import Foreign.ForeignPtr
 import Foreign.Ptr
 import Control.Concurrent.MVar
+import Foreign.C.String
+import Foreign.Marshal
+import Foreign.Storable
+import Control.Monad
+import Data.List
 
 #include <sqlite3.h>
 
@@ -61,9 +67,10 @@ fexecute mv o args = withForeignPtr o
               #{const SQLITE_DONE} -> return ()
               x -> checkError x >> error "Invalid result from sqlite3_step"
             return (-1)
+  )
 
 fexecutemany mv o arglist =
-    mapM_ (fexecute mv o) args
+    mapM_ (fexecute mv o) arglist
 
 ffinish o = withForeignPtr o (\p -> sqlite3_finalize p >>= checkError "finish")
 
@@ -71,7 +78,7 @@ foreign import ccall unsafe "sqlite3.h &sqlite3_finalize"
   sqlite3_finalizeptr :: FunPtr ((Ptr CStmt) -> IO CInt)
 
 foreign import ccall unsafe "sqlite3.h sqlite3_finalize"
-  sqlite3_finalize :: (Ptr CStmt) -> IO Cint
+  sqlite3_finalize :: (Ptr CStmt) -> IO CInt
 
 foreign import ccall unsafe "sqlite3.h sqlite3_prepare"
   sqlite3_prepare :: (Ptr CSqlite3) -> CString -> CInt -> Ptr (Ptr CStmt) -> Ptr (Ptr CString) -> IO CInt
