@@ -19,7 +19,10 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 module Database.HDBC.Sqlite3.Utils where
 
-checkError
+checkError :: String -> CInt -> IO ()
+checkError msg 0 = return ()
+checkError msg res =
+    
 
 foreign import ccall unsafe "sqlite3.h sqlite3_errmsg"
   sqlite3_errmsg :: (Ptr CSqlite3) -> IO CString

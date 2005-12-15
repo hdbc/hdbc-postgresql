@@ -1,4 +1,4 @@
-{-
+{- -*- mode:haskell; -*-
 Copyright (C) 2005 John Goerzen <jgoerzen@complete.org>
 
 This program is free software; you can redistribute it and\/or modify
@@ -24,6 +24,8 @@ import Foreign.C.Types
 import Foreign.ForeignPtr
 import Foreign.Ptr
 import Control.Concurrent.MVar
+
+#include <sqlite3.h>
 
 fprepare o str = withForeignPtr 
   (\p -> withCStringLen
