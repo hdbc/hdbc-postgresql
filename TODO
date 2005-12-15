@@ -1,6 +1,6 @@
 Add a explicit close operation (don't call unbind twice)
 
-handle NULLs in strings
+handle NULLs in strings (may be done)
 
 types
 

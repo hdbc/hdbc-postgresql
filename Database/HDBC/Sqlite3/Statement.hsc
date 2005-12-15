@@ -48,24 +48,47 @@ fprepare o str = withForeignPtr
    )
                     
 mkstmt o = 
-    do mv <- newMVar False
+    do mv <- newMVar False      -- True if rows await, False otherwise
        return $ Statement {sExecute = fexecute mv o,
                            sExecuteMany = fexecutemany mv o,
                            finish = ffinish o,
                            fetchRow = ffetchrow mv o}
+
+{- General algorithm: find out how many columns we have, check the type
+of each to see if it's NULL.  If it's not, fetch it as text and return that. -}
+ffetchrow mv o args = withForeignPtr o (\p -> modifyMVar mv 
+ (\morerows -> 
+  case morerows of
+    False -> return (False, Nothing)
+    True -> do ccount <- sqlite3_column_count p
+               -- fetch the data
+               res <- mapM (getCol p) [0..(ccount - 1)]
+               r <- sqlite3_step p
+               -- Dup of lower code here?
+               
+   do 
+ )
+ where getCol p icol = 
+           do t <- sqlite3_columt_type p icol
+              if t == #{const SQLITE_NULL}
+                 then return Nothing
+                 else do t <- sqlite3_column_text p icol
+                         len <- sqlite3_column_bytes p icol
+                         s <- peekCStringLen (t, fromIntegral len)
+                         return (Just s)
 
 fexecute mv o args = withForeignPtr o
   (\p -> do c <- sqlite3_bind_parameter_count p
             when (c /= genericLength args)
                  (error "Wrong number of bind args")
             modifyMVar_ mv (\_ -> return False)
-            sqlite3_reset p >>= checkError "execute"
+            sqlite3_reset p >>= checkError "execute" o
             bindArgs p
             r <- sqlite3_step p
             case r of
               #{const SQLITE_ROW} -> modifyMVar_ mv (\_ -> return True)
               #{const SQLITE_DONE} -> return ()
-              x -> checkError x >> error "Invalid result from sqlite3_step"
+              x -> checkError "execute" o x >> error "Invalid result from sqlite3_step"
             return (-1)
   )
 
@@ -88,3 +111,18 @@ foreign import ccall unsafe "sqlite3.h sqlite3_bind_parameter_count"
 
 foreign import ccall unsafe "sqlite3.h sqlite3_step"
   sqlite3_step :: (Ptr CStmt) -> IO CInt
+
+foreign import ccall unsafe "sqlite3.h sqlite3_reset"
+  sqlite3_reset :: (Ptr CStmt) -> IO Cint
+
+foreign import ccall unsafe "sqlite3.h sqlite3_column_count"
+  sqlite3_column_count :: (Ptr CStmt) -> IO CInt
+
+foreign import ccall unsafe "sqlite3.h sqlite3_column_type"
+  sqlite3_column_type :: (Ptr CStmt) -> CInt -> IO CInt
+
+foreign import ccall unsafe "sqlite3.h sqlite3_column_text"
+  sqlite3_column_text :: (Ptr CStmt) -> CInt -> IO CString
+
+foreign import ccall unsafe "sqlite3.h sqlite3_column_bytes"
+  sqlite3_column_bytes :: (Ptr CStmt) -> CInt -> IO CInt
