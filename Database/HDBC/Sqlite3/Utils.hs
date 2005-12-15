@@ -18,11 +18,24 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 -}
 
 module Database.HDBC.Sqlite3.Utils where
+import Foreign.C.String
+import Foreign.ForeignPtr
+import Foreign.Ptr
+import Database.HDBC.Types
+import Database.HDBC.Sqlite3.Types
+import Foreign.C.Types
+import Control.Exception
 
-checkError :: String -> CInt -> IO ()
-checkError msg 0 = return ()
-checkError msg res =
-    
+checkError :: String -> Sqlite3 -> CInt -> IO ()
+checkError msg _ 0 = return ()
+checkError msg o res =
+    withForeignPtr o
+     (\p -> do rc <- sqlite3_errmsg p
+               str <- peekCString rc
+               throwDyn $ SqlError {seState = "",
+                                    seNativeError = fromIntegral res,
+                                    seErrorMsg = str}
+     )
 
 foreign import ccall unsafe "sqlite3.h sqlite3_errmsg"
   sqlite3_errmsg :: (Ptr CSqlite3) -> IO CString
