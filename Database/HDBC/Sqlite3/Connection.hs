@@ -24,7 +24,7 @@ import Database.HDBC
 import Database.HDBC.Sqlite3.Types
 import Database.HDBC.Sqlite3.Statement
 import Foreign.C.Types
-import Foreign.C.ForeignPtr
+import Foreign.ForeignPtr
 import Foreign.Ptr
 
 connectSqlite3 :: FilePath -> IO Connection

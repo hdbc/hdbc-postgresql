@@ -20,9 +20,8 @@ module Database.HDBC.Sqlite3.Statement where
 import Database.HDBC.Types
 import Database.HDBC
 import Database.HDBC.Sqlite3.Types
-import Database.HDBC.Sqlite3.Statement
 import Foreign.C.Types
-import Foreign.C.ForeignPtr
+import Foreign.ForeignPtr
 import Foreign.Ptr
 import Control.Concurrent.MVar
 
@@ -42,10 +41,10 @@ fprepare o str = withForeignPtr
                     
 mkstmt o = 
     do mv <- newMVar False
-           Statement {sExecute = fexecute mv o,
-                      sExecuteMany = fexecutemany mv o,
-                      finish = ffinish o,
-                      fetchRow = ffetchrow mv o}
+       return $ Statement {sExecute = fexecute mv o,
+                           sExecuteMany = fexecutemany mv o,
+                           finish = ffinish o,
+                           fetchRow = ffetchrow mv o}
 
 fexecute mv o args = withForeignPtr o
   (\p -> do c <- sqlite3_bind_parameter_count p

@@ -2,7 +2,7 @@ module Database.HDBC.Sqlite3.Types
 where
 
 import Foreign.C.Types
-import Foreign.C.ForeignPtr
+import Foreign.ForeignPtr
 import Foreign.Ptr
 
 data CSqlite3
