@@ -63,10 +63,8 @@ ffetchrow mv o args = withForeignPtr o (\p -> modifyMVar mv
     True -> do ccount <- sqlite3_column_count p
                -- fetch the data
                res <- mapM (getCol p) [0..(ccount - 1)]
-               r <- sqlite3_step p
-               -- Dup of lower code here?
-               
-   do 
+               fstep mv o p
+               return (Just res)
  )
  where getCol p icol = 
            do t <- sqlite3_columt_type p icol
@@ -77,6 +75,13 @@ ffetchrow mv o args = withForeignPtr o (\p -> modifyMVar mv
                          s <- peekCStringLen (t, fromIntegral len)
                          return (Just s)
 
+fstep mv o p =
+    do r <- sqlite3_step p
+       case r of
+         #{const SQLITE_ROW} -> modifyMVar_ mv (\_ -> return True)
+         #{const SQLITE_DONE} -> modifyMVar_ mv (\_ -> return False)
+         x -> checkError "step" o x >> error "Invalid result from sqlite3_step"
+
 fexecute mv o args = withForeignPtr o
   (\p -> do c <- sqlite3_bind_parameter_count p
             when (c /= genericLength args)
@@ -84,18 +89,15 @@ fexecute mv o args = withForeignPtr o
             modifyMVar_ mv (\_ -> return False)
             sqlite3_reset p >>= checkError "execute" o
             bindArgs p
-            r <- sqlite3_step p
-            case r of
-              #{const SQLITE_ROW} -> modifyMVar_ mv (\_ -> return True)
-              #{const SQLITE_DONE} -> return ()
-              x -> checkError "execute" o x >> error "Invalid result from sqlite3_step"
+            fstep mv o p
             return (-1)
   )
 
 fexecutemany mv o arglist =
     mapM_ (fexecute mv o) arglist
 
-ffinish o = withForeignPtr o (\p -> sqlite3_finalize p >>= checkError "finish")
+--ffinish o = withForeignPtr o (\p -> sqlite3_finalize p >>= checkError "finish")
+ffinish = finalizeForeignPtr
 
 foreign import ccall unsafe "sqlite3.h &sqlite3_finalize"
   sqlite3_finalizeptr :: FunPtr ((Ptr CStmt) -> IO CInt)
