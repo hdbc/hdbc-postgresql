@@ -24,6 +24,10 @@ import Database.HDBC
 import Database.HDBC.Sqlite3.Types
 import Database.HDBC.Sqlite3.Statement
 import Foreign.C.Types
+import Foreign.C.String
+import Foreign.Marshal
+import Foreign.Storable
+import Database.HDBC.Sqlite3.Utils
 import Foreign.ForeignPtr
 import Foreign.Ptr
 
@@ -33,10 +37,11 @@ connectSqlite3 fp =
         (\cs -> alloca 
          (\(p::Ptr (Ptr CSqlite3)) ->
               do res <- sqlite3_open cs p
-                 checkError ("connectSqlite3 " ++ fp) res
                  o <- peek p
                  fptr <- newForeignPtr sqlite3_closeptr o
-                 mkConn fptr
+                 newconn <- mkConn fptr
+                 checkError ("connectSqlite3 " ++ fp) fptr res
+                 return newconn
          )
         )
 
@@ -55,17 +60,23 @@ mkConn obj =
 --------------------------------------------------
 
 begin_transaction :: Sqlite3 -> IO ()
-begin_transaction o = run o "BEGIN"
+begin_transaction o = frun o "BEGIN" [] >> return ()
 
-fcommit o = do frun o "COMMIT"
-               begin_transaction
-frollback o =  do frun o "COMMIT"
-                  begin_transaction
-fdisconnect o = withForeignPtr (\p -> sqlite3_finalize p)
+frun o query args =
+    do sth <- fprepare o query
+       sExecute sth args
+
+fcommit o = do frun o "COMMIT" []
+               begin_transaction o
+frollback o =  do frun o "COMMIT" []
+                  begin_transaction o
+fdisconnect o = withForeignPtr o (\p -> sqlite3_close p >>= checkError "disconnect" o)
 
 foreign import ccall unsafe "sqlite3.h sqlite3_open"
   sqlite3_open :: CString -> (Ptr (Ptr CSqlite3)) -> IO CInt
 
 foreign import ccall unsafe "sqlite3.h &sqlite3_close"
-  sqlite3_closeptr :: FunPtr ((Ptr CSqlite3) -> IO CInt)
+  sqlite3_closeptr :: FunPtr ((Ptr CSqlite3) -> IO ())
 
+foreign import ccall unsafe "sqlite3.h sqlite3_close"
+  sqlite3_close :: Ptr CSqlite3 -> IO CInt

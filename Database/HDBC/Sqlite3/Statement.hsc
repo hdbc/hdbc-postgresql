@@ -53,8 +53,8 @@ mkstmt dbo o =
        return $ Statement {sExecute = fexecute mv dbo o,
                            sExecuteMany = fexecutemany mv dbo o,
                            finish = ffinish o,
-                           fetchRow = ffetchrow mv o dbo,
-                           isActive = readMVar mv}
+                           fetchRow = ffetchrow mv o dbo}
+--                           isActive = readMVar mv}
 
 {- General algorithm: find out how many columns we have, check the type
 of each to see if it's NULL.  If it's not, fetch it as text and return that. -}
