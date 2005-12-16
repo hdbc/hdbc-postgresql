@@ -56,7 +56,8 @@ mkstmt o =
 
 {- General algorithm: find out how many columns we have, check the type
 of each to see if it's NULL.  If it's not, fetch it as text and return that. -}
-ffetchrow mv o args = withForeignPtr o (\p -> modifyMVar mv 
+ffetchrow mv o args = 
+ withForeignPtr o (\p -> modifyMVar mv 
  (\morerows -> 
   case morerows of
     False -> return (False, Nothing)
@@ -65,9 +66,9 @@ ffetchrow mv o args = withForeignPtr o (\p -> modifyMVar mv
                res <- mapM (getCol p) [0..(ccount - 1)]
                fstep mv o p
                return (Just res)
- )
+ ))
  where getCol p icol = 
-           do t <- sqlite3_columt_type p icol
+           do t <- sqlite3_column_type p icol
               if t == #{const SQLITE_NULL}
                  then return Nothing
                  else do t <- sqlite3_column_text p icol
@@ -115,7 +116,7 @@ foreign import ccall unsafe "sqlite3.h sqlite3_step"
   sqlite3_step :: (Ptr CStmt) -> IO CInt
 
 foreign import ccall unsafe "sqlite3.h sqlite3_reset"
-  sqlite3_reset :: (Ptr CStmt) -> IO Cint
+  sqlite3_reset :: (Ptr CStmt) -> IO CInt
 
 foreign import ccall unsafe "sqlite3.h sqlite3_column_count"
   sqlite3_column_count :: (Ptr CStmt) -> IO CInt
