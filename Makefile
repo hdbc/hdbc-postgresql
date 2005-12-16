@@ -18,25 +18,25 @@ GHCPARMS := -fglasgow-exts
 
 .PHONY: all hugsbuild
 all: setup			# GHC build
-	./setup configure
+	./setup configure --user
 	./setup build
 
 hugsbuild: setup
 	./setup configure --hugs
 	./setup build
 
-setup: Setup.lhs MissingH.cabal
+setup: Setup.lhs HDBC-sqlite3.cabal
 	ghc -package Cabal Setup.lhs -o setup
 
+clean:
 	-./setup clean
 	-rm -rf html `find . -name "*.o"` `find . -name "*.hi"` \
 		`find . -name "*~"` *.a setup dist testsrc/runtests \
 		local-pkg doctmp
 	-rm -rf testtmp/*
-	-cd doc && $(MAKE) clean
 
 testsrc/runtests: all $(wildcard testsrc/*.hs) $(wildcard testsrc/*/*.hs) $(wildcard testsrc/*/*/*.hs)
-	cd testsrc && ghc --make -package mtl -package HUnit $(GHCPARMS) -o runtests  -i../dist/build:.. runtests.hs
+	cd testsrc && ghc --make -package mtl -package HUnit -package MissingH -package HDBC $(GHCPARMS) -o runtests  -i../dist/build:.. runtests.hs
 
 test-ghc6: testsrc/runtests
 	testsrc/runtests
