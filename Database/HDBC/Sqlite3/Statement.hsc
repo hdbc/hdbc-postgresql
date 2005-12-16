@@ -33,39 +33,40 @@ import Data.List
 
 #include <sqlite3.h>
 
-fprepare o str = withForeignPtr 
-  (\p -> withCStringLen
-   (\cslen -> alloca
+fprepare o str = withForeignPtr o
+  (\p -> withCStringLen str
+   (\(cs, cslen) -> alloca
     (\(newp::Ptr (Ptr CStmt)) ->
-     (do res <- sqlite3_prepare p (fst cslen) (snd cslen) newp nullPtr
-         checkError ("prepare " ++ str) res
-         o <- peek newp
-         fptr <- newForeignPtr sqlite3_finalizeptr o
-         mkstmt fptr
+     (do res <- sqlite3_prepare p cs (fromIntegral cslen) newp nullPtr
+         checkError ("prepare " ++ str) o res
+         newo <- peek newp
+         fptr <- newForeignPtr sqlite3_finalizeptr newo
+         mkstmt o fptr
      )
      )
    )
    )
-                    
-mkstmt o = 
+                 
+mkstmt :: Sqlite3 -> Stmt -> IO Statement   
+mkstmt dbo o = 
     do mv <- newMVar False      -- True if rows await, False otherwise
-       return $ Statement {sExecute = fexecute mv o,
-                           sExecuteMany = fexecutemany mv o,
+       return $ Statement {sExecute = fexecute mv dbo o,
+                           sExecuteMany = fexecutemany mv dbo o,
                            finish = ffinish o,
-                           fetchRow = ffetchrow mv o}
+                           fetchRow = ffetchrow mv o dbo}
 
 {- General algorithm: find out how many columns we have, check the type
 of each to see if it's NULL.  If it's not, fetch it as text and return that. -}
-ffetchrow mv o args = 
- withForeignPtr o (\p -> modifyMVar mv 
+ffetchrow mv sto o = 
+ withForeignPtr sto (\p -> modifyMVar mv 
  (\morerows -> 
   case morerows of
     False -> return (False, Nothing)
     True -> do ccount <- sqlite3_column_count p
                -- fetch the data
                res <- mapM (getCol p) [0..(ccount - 1)]
-               fstep mv o p
-               return (Just res)
+               r <- fstep mv o p
+               return (r, Just res)
  ))
  where getCol p icol = 
            do t <- sqlite3_column_type p icol
@@ -76,32 +77,42 @@ ffetchrow mv o args =
                          s <- peekCStringLen (t, fromIntegral len)
                          return (Just s)
 
-fstep mv o p =
+fstep mv dbo p =
     do r <- sqlite3_step p
        case r of
-         #{const SQLITE_ROW} -> modifyMVar_ mv (\_ -> return True)
-         #{const SQLITE_DONE} -> modifyMVar_ mv (\_ -> return False)
-         x -> checkError "step" o x >> error "Invalid result from sqlite3_step"
+         #{const SQLITE_ROW} -> modifyMVar_ mv (\_ -> return True) >> return True
+         #{const SQLITE_DONE} -> modifyMVar_ mv (\_ -> return False) >> return False
+         x -> checkError "step" dbo x >> error "Invalid result from sqlite3_step"
 
-fexecute mv o args = withForeignPtr o
+fexecute mv dbo o args = withForeignPtr o
   (\p -> do c <- sqlite3_bind_parameter_count p
             when (c /= genericLength args)
-                 (error "Wrong number of bind args")
+                 -- FIXME: use SQL error and describe the error
+                 (error $ "Wrong number of bind args")
             modifyMVar_ mv (\_ -> return False)
-            sqlite3_reset p >>= checkError "execute" o
-            bindArgs p
-            fstep mv o p
+            sqlite3_reset p >>= checkError "execute (reset)" dbo
+            zipWithM_ (bindArgs p) [1..c] args
+            fstep mv dbo p
             return (-1)
   )
+  where bindArgs p i Nothing =
+            sqlite3_bind_null p i >>= 
+              checkError ("execute (binding NULL column " ++ (show i) ++ ")") dbo
+        bindArgs p i (Just str) = withCStringLen str 
+             (\(cs, len) -> do r <- sqlite3_bind_text2 p i cs 
+                                    (fromIntegral len)
+                               checkError ("execute (binding column " ++ 
+                                           (show i) ++ ")") dbo r
+             )
 
-fexecutemany mv o arglist =
-    mapM_ (fexecute mv o) arglist
+fexecutemany mv dbo o arglist =
+    mapM (fexecute mv dbo o) arglist >>= return . genericLength
 
 --ffinish o = withForeignPtr o (\p -> sqlite3_finalize p >>= checkError "finish")
 ffinish = finalizeForeignPtr
 
 foreign import ccall unsafe "sqlite3.h &sqlite3_finalize"
-  sqlite3_finalizeptr :: FunPtr ((Ptr CStmt) -> IO CInt)
+  sqlite3_finalizeptr :: FunPtr ((Ptr CStmt) -> IO ())
 
 foreign import ccall unsafe "sqlite3.h sqlite3_finalize"
   sqlite3_finalize :: (Ptr CStmt) -> IO CInt
@@ -129,3 +140,9 @@ foreign import ccall unsafe "sqlite3.h sqlite3_column_text"
 
 foreign import ccall unsafe "sqlite3.h sqlite3_column_bytes"
   sqlite3_column_bytes :: (Ptr CStmt) -> CInt -> IO CInt
+
+foreign import ccall unsafe "hdbc-sqlite3-helper.h sqlite3_bind_text2"
+  sqlite3_bind_text2 :: (Ptr CStmt) -> CInt -> CString -> CInt -> IO CInt
+
+foreign import ccall unsafe "sqlite3.h sqlite3_bind_null"
+  sqlite3_bind_null :: (Ptr CStmt) -> CInt -> IO CInt

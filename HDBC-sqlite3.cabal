@@ -15,4 +15,4 @@ Other-Modules: Database.HDBC.Sqlite3.Connection,
 C-Sources: hdbc-sqlite3-helper.c
 Build-Depends: base, mtl, HDBC
 GHC-Options: -O2 -fglasgow-exts
-
+CC-Options: -I.
