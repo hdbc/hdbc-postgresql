@@ -130,7 +130,8 @@ foreign import ccall unsafe "sqlite3.h &sqlite3_finalize"
 foreign import ccall unsafe "sqlite3.h sqlite3_finalize"
   sqlite3_finalize :: (Ptr CStmt) -> IO CInt
 
-foreign import ccall unsafe "sqlite3.h sqlite3_prepare"
+--foreign import ccall unsafe "sqlite3.h sqlite3_prepare"
+foreign import ccall unsafe "hdbc-sqlite3-helper.h sqlite3_prepare_dbg"
   sqlite3_prepare :: (Ptr CSqlite3) -> CString -> CInt -> Ptr (Ptr CStmt) -> Ptr (Ptr CString) -> IO CInt
 
 foreign import ccall unsafe "sqlite3.h sqlite3_bind_parameter_count"
