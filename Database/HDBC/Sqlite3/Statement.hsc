@@ -97,8 +97,9 @@ fstep dbo p =
 fexecute mv dbo o args = withForeignPtr o
   (\p -> do c <- sqlite3_bind_parameter_count p
             when (c /= genericLength args)
-                 -- FIXME: use SQL error and describe the error
-                 (error $ "Wrong number of bind args")
+                 (throwDyn $ SqlError {seState = "",
+                                       seNativeError = (-1),
+                                       seErrorMsg = "In HDBC execute, received " ++ (show args) ++ " but expected " ++ (show c) ++ " args."})
             modifyMVar_ mv (\_ -> return False)
             sqlite3_reset p >>= checkError "execute (reset)" dbo
             zipWithM_ (bindArgs p) [1..c] args
