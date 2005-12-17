@@ -62,7 +62,8 @@ ffetchrow mv sto o =
  withForeignPtr sto (\p -> modifyMVar mv 
  (\morerows -> 
   case morerows of
-    False -> return (False, Nothing)
+    False -> do ffinish sto
+                return (False, Nothing)
     True -> do ccount <- sqlite3_column_count p
                -- fetch the data
                res <- mapM (getCol p) [0..(ccount - 1)]
