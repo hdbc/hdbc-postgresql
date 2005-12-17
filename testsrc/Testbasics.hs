@@ -21,7 +21,6 @@ basicQueries = dbTestCase (\dbh ->
        sExecute sth []
        fetchRow sth >>= (assertEqual "row 1" (Just [Just "2"]))
        fetchRow sth >>= (assertEqual "last row" Nothing)
-       --finish sth
                           )
     
 
