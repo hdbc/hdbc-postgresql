@@ -8,16 +8,26 @@ openClosedb = sqlTestCase $
     do dbh <- connectDB
        disconnect dbh
 
+multiFinish = dbTestCase (\dbh ->
+    do sth <- prepare dbh "SELECT 1 + 1"
+       sExecute sth []
+       finish sth
+       finish sth
+       finish sth
+                          )
+
 basicQueries = dbTestCase (\dbh ->
     do sth <- prepare dbh "SELECT 1 + 1"
        sExecute sth []
        fetchRow sth >>= (assertEqual "row 1" (Just [Just "2"]))
-       finish sth
+       fetchRow sth >>= (assertEqual "last row" Nothing)
+       --finish sth
                           )
     
 
 tests = TestList
         [
-         TestLabel "basicQueries" basicQueries,
-         TestLabel "openClosedb" openClosedb
+         TestLabel "openClosedb" openClosedb,
+         TestLabel "multiFinish" multiFinish,
+         TestLabel "basicQueries" basicQueries
          ]
