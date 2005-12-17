@@ -34,8 +34,10 @@ import Control.Exception
 
 #include <sqlite3.h>
 
+{- This deal with adding the \0 below is in response to an apparent bug in
+sqlite3.  See debign bug #xxxxxx. -}
 fprepare o str = withForeignPtr o
-  (\p -> withCStringLen str
+  (\p -> withCStringLen (str ++ "\0")
    (\(cs, cslen) -> alloca
     (\(newp::Ptr (Ptr CStmt)) ->
      (do res <- sqlite3_prepare p cs (fromIntegral cslen) newp nullPtr
