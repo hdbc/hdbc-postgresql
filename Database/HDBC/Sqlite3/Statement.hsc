@@ -63,12 +63,13 @@ ffetchrow mv sto o =
  withForeignPtr sto (\p -> modifyMVar mv 
  (\morerows -> 
   case morerows of
-    False -> do ffinish sto
-                return (False, Nothing)
+    False -> return (False, Nothing)
     True -> do ccount <- sqlite3_column_count p
                -- fetch the data
                res <- mapM (getCol p) [0..(ccount - 1)]
                r <- fstep o p
+               when (not r)
+                    (ffinish sto)
                return (r, Just res)
  ))
  where getCol p icol = 
