@@ -33,10 +33,10 @@ clean:
 	-rm -rf html `find . -name "*.o"` `find . -name "*.hi"` \
 		`find . -name "*~"` *.a setup dist testsrc/runtests \
 		local-pkg doctmp
-	-rm -rf testtmp/*
+	-rm -rf testtmp/* testtmp*
 
 testsrc/runtests: all $(wildcard testsrc/*.hs) $(wildcard testsrc/*/*.hs) $(wildcard testsrc/*/*/*.hs)
-	cd testsrc && ghc --make -package mtl -package HUnit -package MissingH -package HDBC $(GHCPARMS) -o runtests  -i../dist/build:.. runtests.hs
+	cd testsrc && ghc --make -package mtl -package HUnit -package MissingH -package HDBC -lsqlite3 ../dist/build/hdbc-sqlite3-helper.o $(GHCPARMS) -o runtests  -i../dist/build:.. runtests.hs
 
 test-ghc6: testsrc/runtests
 	testsrc/runtests

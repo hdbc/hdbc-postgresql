@@ -1,3 +1,4 @@
+Extra-Libraries: sqlite3
 Name: HDBC-sqlite3
 Version: 0.5.0
 License: LGPL
