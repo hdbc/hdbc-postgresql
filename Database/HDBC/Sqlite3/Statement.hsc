@@ -30,6 +30,8 @@ import Foreign.Marshal
 import Foreign.Storable
 import Control.Monad
 import Data.List
+import System.IO
+import Control.Exception
 
 #include <sqlite3.h>
 
@@ -62,12 +64,17 @@ ffetchrow mv sto o =
  withForeignPtr sto (\p -> modifyMVar mv 
  (\morerows -> 
   case morerows of
-    False -> do ffinish sto
+    False -> do hPutStrLn stderr "\nIn ffetchrow1"
+                ffinish sto
                 return (False, Nothing)
-    True -> do ccount <- sqlite3_column_count p
+    True -> do hPutStrLn stderr "\nIn ffetchrow2"
+               ccount <- sqlite3_column_count p
+               hPutStrLn stderr ("\n3: " ++ show ccount)
                -- fetch the data
                res <- mapM (getCol p) [0..(ccount - 1)]
-               r <- fstep mv o p
+               hPutStrLn stderr ("\n4: " ++ show res)
+               r <- fstep o p
+               hPutStrLn stderr "\n5"
                return (r, Just res)
  ))
  where getCol p icol = 
@@ -79,12 +86,21 @@ ffetchrow mv sto o =
                          s <- peekCStringLen (t, fromIntegral len)
                          return (Just s)
 
-fstep mv dbo p =
-    do r <- sqlite3_step p
+fstep dbo p =
+    do hPutStrLn stderr "\nin fstep" 
+       r <- sqlite3_step p
+       hPutStrLn stderr ("\nfstep got: " ++ show r)
        case r of
-         #{const SQLITE_ROW} -> modifyMVar_ mv (\_ -> return True) >> return True
-         #{const SQLITE_DONE} -> modifyMVar_ mv (\_ -> return False) >> return False
-         x -> checkError "step" dbo x >> error "Invalid result from sqlite3_step"
+         #{const SQLITE_ROW} -> return True
+         #{const SQLITE_DONE} -> hPutStrLn stderr "fstep got done" >> hPutStrLn stderr "\nfstep modified mvar" >> return False
+         #{const SQLITE_ERROR} -> checkError "step" dbo #{const SQLITE_ERROR}
+                                   >> (throwDyn $ SqlError 
+                                          {seState = "",
+                                           seNativeError = 0,
+                                           seErrorMsg = "In HDBC step, internal processing error (got SQLITE_ERROR with no error)"})
+         x -> throwDyn $ SqlError {seState = "",
+                                   seNativeError = fromIntegral x,
+                                   seErrorMsg = "In HDBC step, unexpected result from sqlite3_step"}
 
 fexecute mv dbo o args = withForeignPtr o
   (\p -> do c <- sqlite3_bind_parameter_count p
@@ -94,7 +110,8 @@ fexecute mv dbo o args = withForeignPtr o
             modifyMVar_ mv (\_ -> return False)
             sqlite3_reset p >>= checkError "execute (reset)" dbo
             zipWithM_ (bindArgs p) [1..c] args
-            fstep mv dbo p
+            newmv <- fstep dbo p
+            modifyMVar_ mv (\_ -> return newmv)
             return (-1)
   )
   where bindArgs p i Nothing =
