@@ -64,13 +64,16 @@ begin_transaction o = frun o "BEGIN" [] >> return ()
 
 frun o query args =
     do sth <- fprepare o query
-       sExecute sth args
+       res <- sExecute sth args
+       finish sth
+       return res
 
 fcommit o = do frun o "COMMIT" []
                begin_transaction o
 frollback o =  do frun o "COMMIT" []
                   begin_transaction o
-fdisconnect o = withForeignPtr o (\p -> sqlite3_close p >>= checkError "disconnect" o)
+fdisconnect o = withForeignPtr o (\p -> do r <- sqlite3_close p
+                                           checkError "disconnect" o r)
 
 foreign import ccall unsafe "sqlite3.h sqlite3_open"
   sqlite3_open :: CString -> (Ptr (Ptr CSqlite3)) -> IO CInt
