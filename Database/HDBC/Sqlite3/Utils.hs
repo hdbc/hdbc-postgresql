@@ -34,7 +34,7 @@ checkError msg o res =
                str <- peekCString rc
                throwDyn $ SqlError {seState = "",
                                     seNativeError = fromIntegral res,
-                                    seErrorMsg = str}
+                                    seErrorMsg = msg ++ ": " ++ str}
      )
 
 foreign import ccall unsafe "sqlite3.h sqlite3_errmsg"

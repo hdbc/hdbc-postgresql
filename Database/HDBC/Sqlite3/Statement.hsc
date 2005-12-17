@@ -39,7 +39,7 @@ fprepare o str = withForeignPtr o
    (\(cs, cslen) -> alloca
     (\(newp::Ptr (Ptr CStmt)) ->
      (do res <- sqlite3_prepare p cs (fromIntegral cslen) newp nullPtr
-         checkError ("prepare " ++ str) o res
+         checkError ("prepare " ++ (show cslen) ++ ": " ++ str) o res
          newo <- peek newp
          fptr <- newForeignPtr sqlite3_finalizeptr newo
          mkstmt o fptr
