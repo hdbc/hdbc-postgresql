@@ -30,7 +30,6 @@ import Foreign.Marshal
 import Foreign.Storable
 import Control.Monad
 import Data.List
-import System.IO
 import Control.Exception
 
 #include <sqlite3.h>
@@ -64,17 +63,12 @@ ffetchrow mv sto o =
  withForeignPtr sto (\p -> modifyMVar mv 
  (\morerows -> 
   case morerows of
-    False -> do hPutStrLn stderr "\nIn ffetchrow1"
-                ffinish sto
+    False -> do ffinish sto
                 return (False, Nothing)
-    True -> do hPutStrLn stderr "\nIn ffetchrow2"
-               ccount <- sqlite3_column_count p
-               hPutStrLn stderr ("\n3: " ++ show ccount)
+    True -> do ccount <- sqlite3_column_count p
                -- fetch the data
                res <- mapM (getCol p) [0..(ccount - 1)]
-               hPutStrLn stderr ("\n4: " ++ show res)
                r <- fstep o p
-               hPutStrLn stderr "\n5"
                return (r, Just res)
  ))
  where getCol p icol = 
@@ -87,12 +81,10 @@ ffetchrow mv sto o =
                          return (Just s)
 
 fstep dbo p =
-    do hPutStrLn stderr "\nin fstep" 
-       r <- sqlite3_step p
-       hPutStrLn stderr ("\nfstep got: " ++ show r)
+    do r <- sqlite3_step p
        case r of
          #{const SQLITE_ROW} -> return True
-         #{const SQLITE_DONE} -> hPutStrLn stderr "fstep got done" >> hPutStrLn stderr "\nfstep modified mvar" >> return False
+         #{const SQLITE_DONE} -> return False
          #{const SQLITE_ERROR} -> checkError "step" dbo #{const SQLITE_ERROR}
                                    >> (throwDyn $ SqlError 
                                           {seState = "",

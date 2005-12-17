@@ -11,9 +11,7 @@ openClosedb = sqlTestCase $
 basicQueries = dbTestCase (\dbh ->
     do sth <- prepare dbh "SELECT 1 + 1"
        sExecute sth []
-       hPutStr stderr "\n--2"
-       fetchRow sth -- >>= (putStrLn . show)--(assertEqual "row 1" (Just [Just "2"]))
-       hPutStr stderr "\n--3"
+       fetchRow sth >>= (assertEqual "row 1" (Just [Just "2"]))
        finish sth
                           )
     
