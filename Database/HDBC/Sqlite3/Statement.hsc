@@ -108,6 +108,8 @@ fexecute mv dbo o args = withForeignPtr o
             zipWithM_ (bindArgs p) [1..c] args
             newmv <- fstep dbo p
             modifyMVar_ mv (\_ -> return newmv)
+            when (not newmv)    -- Clean up the sth now, if there are no rows.
+                 (ffinish o)
             return (-1)
   )
   where bindArgs p i Nothing =

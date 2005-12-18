@@ -47,6 +47,21 @@ runReplace = dbTestCase (\dbh ->
     where r1 = [Just "runReplace", Just "1", Just "1234", Just "testdata"]
           r2 = [Just "runReplace", Just "2", Nothing]
 
+executeReplace = dbTestCase (\dbh ->
+    do sth <- prepare dbh "INSERT INTO test1 VALUES ('executeReplace',?,?,?)"
+       sExecute sth [Just "1", Just "1234", Just "Foo"]
+       sExecute sth [Just "2", Nothing, Just "Bar"]
+       commit dbh
+       sth <- prepare dbh "SELECT * FROM test1 WHERE testname = ? ORDER BY testid"
+       sExecute sth [Just "executeReplace"]
+       fetchRow sth >>= (assertEqual "r1" 
+                         (Just $ map Just ["executeReplace", "1", "1234", 
+                                           "Foo"]))
+       fetchRow sth >>= (assertEqual "r2"
+                         (Just [Just "executeReplace", Just "2", Nothing,
+                                Just "Bar"]))
+       fetchRow sth >>= (assertEqual "lastrow" Nothing)
+                            )
 
 tests = TestList
         [
@@ -55,7 +70,7 @@ tests = TestList
          TestLabel "basicQueries" basicQueries,
          TestLabel "createTable" createTable,
          TestLabel "runReplace" runReplace,
-         --TestLabel "executeReplace" executeReplace,
+         TestLabel "executeReplace" executeReplace,
          --TestLabel "executeMulti" executeMulti
          -- commit, rollback
          TestLabel "dropTable" dropTable
