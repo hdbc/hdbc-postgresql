@@ -86,8 +86,12 @@ fprepare sstate = withForeignPtr (dbo sstate)
                  
 
 {- General algorithm: find out how many columns we have, check the type
-of each to see if it's NULL.  If it's not, fetch it as text and return that. -}
-ffetchrow sstate = modifyMVar (stomv sstate) 
+of each to see if it's NULL.  If it's not, fetch it as text and return that.
+
+Note that execute() will have already loaded up the first row -- and we
+do that each time.  so this function returns the row that is already in sqlite,
+then loads the next row. -}
+ffetchrow sstate = modifyMVar (stomv sstate) dofetchrow
     where dofetchrow Empty = return (Empty, Nothing)
           dofetchrow (Prepared _) = 
               throwDyn $ SqlError {seState = "HDBC Sqlite3 fetchrow",
@@ -98,9 +102,10 @@ ffetchrow sstate = modifyMVar (stomv sstate)
                  -- fetch the data
                  res <- mapM (getCol p) [0..(ccount - 1)]
                  r <- fstep o p
-                 --when (not r)
-                 --     (ffinish sto)
-                 return (if r then Just sto else Nothing, Just res)
+                 if r
+                    then return (Executed sto, Just res)
+                    else do ffinish sstate
+                            return (Empty, Just res)
                                                      )
  
           getCol p icol = 
