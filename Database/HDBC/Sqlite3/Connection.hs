@@ -53,7 +53,7 @@ mkConn obj =
                             commit = fcommit obj,
                             rollback = frollback obj,
                             run = frun obj,
-                            prepare = fprepare obj}
+                            prepare = newSth obj}
 
 --------------------------------------------------
 -- Guts here

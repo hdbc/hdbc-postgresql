@@ -34,54 +34,83 @@ import Control.Exception
 
 #include <sqlite3.h>
 
-{- This deal with adding the \0 below is in response to an apparent bug in
-sqlite3.  See debign bug #xxxxxx. -}
-fprepare o str = withForeignPtr o
-  (\p -> withCStringLen (str ++ "\0")
+data StoState = Empty           -- ^ Not initialized or last execute/fetchrow had no results
+              | Prepared Stmt   -- ^ Prepared but not executed
+              | Executed Stmt   -- ^ Executed and more rows are expected
+     deriving (Eq, Show, Read)
+
+data SState = {dbo :: Sqlite3,
+               stomv :: MVar StoState,
+               query :: String}
+     deriving (Eq, Show)
+
+newSth :: Sqlite3 -> String -> IO Statement               
+newSth indbo str = 
+    do newstomv <- newMVar Empty
+       newmorerowsmv <- newMVar False
+       let sstate = {dbo = indbo,
+                     stomv = newstomv,
+                     morerowsmv = newmorerowsmv
+                     query = str}
+       fprepare sstate
+       return $ Statement {sExecute = fexecute sstate,
+                           sExecuteMany = fexecutemany sstate,
+                           finish = ffinish sstate,
+                           fetchRow = ffetchrow sstate}
+
+{- The deal with adding the \0 below is in response to an apparent bug in
+sqlite3.  See debign bug #343736. 
+
+This function assumes that any existing query in the state has already
+been terminated.
+-}
+fprepare :: SState -> IO ()
+fprepare sstate = withForeignPtr (dbo sstate)
+  (\p -> withCStringLen ((query sstate) ++ "\0")
    (\(cs, cslen) -> alloca
-    (\(newp::Ptr (Ptr CStmt)) ->
+    (\(newp::Ptr (Ptr CStmt)) -> modifyMVar_ (stomv sstate) (\_ ->
      (do res <- sqlite3_prepare p cs (fromIntegral cslen) newp nullPtr
-         checkError ("prepare " ++ (show cslen) ++ ": " ++ str) o res
+         checkError ("prepare " ++ (show cslen) ++ ": " ++ str) dbo res
          newo <- peek newp
          fptr <- newForeignPtr sqlite3_finalizeptr newo
-         mkstmt o fptr
+         return (Prepared fptr,
+                 Statement {sExecute = fexecute sstate,
+                            sExecuteMany = fexecutemany sstate,
+                            finish = ffinish sstate,
+                            fetchRow = ffetchrow sstate})
+         )
      )
      )
    )
    )
                  
-mkstmt :: Sqlite3 -> Stmt -> IO Statement   
-mkstmt dbo o = 
-    do mv <- newMVar False      -- True if rows await, False otherwise
-       return $ Statement {sExecute = fexecute mv dbo o,
-                           sExecuteMany = fexecutemany mv dbo o,
-                           finish = ffinish o,
-                           fetchRow = ffetchrow mv o dbo}
---                           isActive = readMVar mv}
 
 {- General algorithm: find out how many columns we have, check the type
 of each to see if it's NULL.  If it's not, fetch it as text and return that. -}
-ffetchrow mv sto o = 
- withForeignPtr sto (\p -> modifyMVar mv 
- (\morerows -> 
-  case morerows of
-    False -> return (False, Nothing)
-    True -> do ccount <- sqlite3_column_count p
-               -- fetch the data
-               res <- mapM (getCol p) [0..(ccount - 1)]
-               r <- fstep o p
-               when (not r)
-                    (ffinish sto)
-               return (r, Just res)
- ))
- where getCol p icol = 
-           do t <- sqlite3_column_type p icol
-              if t == #{const SQLITE_NULL}
-                 then return Nothing
-                 else do t <- sqlite3_column_text p icol
-                         len <- sqlite3_column_bytes p icol
-                         s <- peekCStringLen (t, fromIntegral len)
-                         return (Just s)
+ffetchrow sstate = modifyMVar (stomv sstate) 
+    where dofetchrow Empty = return (Empty, Nothing)
+          dofetchrow (Prepared _) = 
+              throwDyn $ SqlError {seState = "HDBC Sqlite3 fetchrow",
+                                   seNativeError = 0,
+                                   seErrorMsg = "Attempt to fetch row from Statement that has not been executed.  Query was: " ++ (query sstate)}
+          dofetchrow (Executed sto) = withForeignPtr sto (\p ->
+              do ccount <- sqlite3_column_count p
+                 -- fetch the data
+                 res <- mapM (getCol p) [0..(ccount - 1)]
+                 r <- fstep o p
+                 --when (not r)
+                 --     (ffinish sto)
+                 return (if r then Just sto else Nothing, Just res)
+                                                     )
+ 
+          getCol p icol = 
+             do t <- sqlite3_column_type p icol
+                if t == #{const SQLITE_NULL}
+                   then return Nothing
+                   else do t <- sqlite3_column_text p icol
+                           len <- sqlite3_column_bytes p icol
+                           s <- peekCStringLen (t, fromIntegral len)
+                           return (Just s)
 
 fstep dbo p =
     do r <- sqlite3_step p
@@ -97,7 +126,10 @@ fstep dbo p =
                                    seNativeError = fromIntegral x,
                                    seErrorMsg = "In HDBC step, unexpected result from sqlite3_step"}
 
-fexecute mv dbo o args = withForeignPtr o
+fexecute sstate args = 
+    -- First, finish up any existing stuff.
+    do 
+withForeignPtr o
   (\p -> do c <- sqlite3_bind_parameter_count p
             when (c /= genericLength args)
                  (throwDyn $ SqlError {seState = "",
