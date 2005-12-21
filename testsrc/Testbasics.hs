@@ -63,6 +63,19 @@ executeReplace = dbTestCase (\dbh ->
        fetchRow sth >>= (assertEqual "lastrow" Nothing)
                             )
 
+executeMany = dbTestCase (\dbh ->
+    do sth <- prepare dbh "INSERT INTO test1 VALUES ('multi',?,?,?)"
+       sExecuteMany sth rows
+       commit dbh
+       sth <- prepare dbh "SELECT testid, testint, testtext FROM test1 WHERE testname = 'multi'"
+       sExecute sth []
+       mapM_ (\r -> fetchRow sth >>= (assertEqual "" (Just r))) rows
+       fetchRow sth >>= (assertEqual "lastrow" Nothing)
+                          )
+    where rows = [map Just ["1", "1234", "foo"],
+                  map Just ["2", "1341", "bar"],
+                  [Just "3", Nothing, Nothing]]
+
 tests = TestList
         [
          TestLabel "openClosedb" openClosedb,
@@ -71,7 +84,7 @@ tests = TestList
          TestLabel "createTable" createTable,
          TestLabel "runReplace" runReplace,
          TestLabel "executeReplace" executeReplace,
-         --TestLabel "executeMulti" executeMulti
+         TestLabel "executeMany" executeMany,
          -- commit, rollback
          TestLabel "dropTable" dropTable
          ]
