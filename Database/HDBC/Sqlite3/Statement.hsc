@@ -37,12 +37,10 @@ import Control.Exception
 data StoState = Empty           -- ^ Not initialized or last execute/fetchrow had no results
               | Prepared Stmt   -- ^ Prepared but not executed
               | Executed Stmt   -- ^ Executed and more rows are expected
-     deriving (Eq, Show, Read)
 
 data SState = SState {dbo :: Sqlite3,
                       stomv :: MVar StoState,
                       query :: String}
-     deriving (Eq, Show)
 
 newSth :: Sqlite3 -> String -> IO Statement               
 newSth indbo str = 
@@ -70,7 +68,7 @@ fprepare sstate = withForeignPtr (dbo sstate)
    (\(cs, cslen) -> alloca
     (\(newp::Ptr (Ptr CStmt)) -> modifyMVar_ (stomv sstate) (\_ ->
      (do res <- sqlite3_prepare p cs (fromIntegral cslen) newp nullPtr
-         checkError ("prepare " ++ (show cslen) ++ ": " ++ str) dbo res
+         checkError ("prepare " ++ (show cslen) ++ ": " ++ (query sstate)) dbo res
          newo <- peek newp
          fptr <- newForeignPtr sqlite3_finalizeptr newo
          return fptr
@@ -97,7 +95,7 @@ ffetchrow sstate = modifyMVar (stomv sstate) dofetchrow
               do ccount <- sqlite3_column_count p
                  -- fetch the data
                  res <- mapM (getCol p) [0..(ccount - 1)]
-                 r <- fstep o p
+                 r <- fstep sto p
                  if r
                     then return (Executed sto, Just res)
                     else do ffinish sstate
@@ -130,26 +128,26 @@ fstep dbo p =
 fexecute sstate args = modifyMVar (stomv sstate) doexecute
     where doexecute (Executed sto) = ffinish sstate >> doexecute Empty
           doexecute Empty =     -- already cleaned up from last time
-              do newsto <- fprepare sstate
+              do sto <- fprepare sstate
                  doexecute (Prepared sto)
-          doexecute (Prepared sto) = withForeignPtr sto
-  (\p -> do c <- sqlite3_bind_parameter_count p
-            when (c /= genericLength args)
-                 (throwDyn $ SqlError {seState = "",
-                                       seNativeError = (-1),
-                                       seErrorMsg = "In HDBC execute, received " ++ (show args) ++ " but expected " ++ (show c) ++ " args."})
-            sqlite3_reset p >>= checkError "execute (reset)" dbo
-            zipWithM_ (bindArgs p) [1..c] args
-            r <- fstep dbo p
-            if r
-               then return (Executed sto, (-1))
-               else do ffinish sstate
-                       return (Empty, 0)
-  )
-  where bindArgs p i Nothing =
-            sqlite3_bind_null p i >>= 
-              checkError ("execute (binding NULL column " ++ (show i) ++ ")") dbo
-        bindArgs p i (Just str) = withCStringLen str 
+          doexecute (Prepared sto) = withForeignPtr sto (\p -> 
+              do c <- sqlite3_bind_parameter_count p
+                 when (c /= genericLength args)
+                   (throwDyn $ SqlError {seState = "",
+                                         seNativeError = (-1),
+                                         seErrorMsg = "In HDBC execute, received " ++ (show args) ++ " but expected " ++ (show c) ++ " args."})
+                 sqlite3_reset p >>= checkError "execute (reset)" dbo
+                 zipWithM_ (bindArgs p) [1..c] args
+                 r <- fstep dbo p
+                 if r
+                    then return (Executed sto, (-1))
+                    else do ffinish sstate
+                            return (Empty, 0)
+                                                        )
+          bindArgs p i Nothing =
+              sqlite3_bind_null p i >>= 
+                checkError ("execute (binding NULL column " ++ (show i) ++ ")") dbo
+          bindArgs p i (Just str) = withCStringLen str 
              (\(cs, len) -> do r <- sqlite3_bind_text2 p i cs 
                                     (fromIntegral len)
                                checkError ("execute (binding column " ++ 
