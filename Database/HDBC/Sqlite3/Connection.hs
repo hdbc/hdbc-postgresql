@@ -52,7 +52,7 @@ mkConn obj =
                             disconnect = fdisconnect obj,
                             commit = fcommit obj,
                             rollback = frollback obj,
-                            run = frun obj,
+                            sRun = fsrun obj,
                             prepare = newSth obj}
 
 --------------------------------------------------
@@ -60,17 +60,17 @@ mkConn obj =
 --------------------------------------------------
 
 begin_transaction :: Sqlite3 -> IO ()
-begin_transaction o = frun o "BEGIN" [] >> return ()
+begin_transaction o = fsrun o "BEGIN" [] >> return ()
 
-frun o query args =
+fsrun o query args =
     do sth <- newSth o query
        res <- sExecute sth args
        finish sth
        return res
 
-fcommit o = do frun o "COMMIT" []
+fcommit o = do fsrun o "COMMIT" []
                begin_transaction o
-frollback o =  do frun o "COMMIT" []
+frollback o =  do fsrun o "COMMIT" []
                   begin_transaction o
 fdisconnect o = withForeignPtr o (\p -> do r <- sqlite3_close p
                                            checkError "disconnect" o r)

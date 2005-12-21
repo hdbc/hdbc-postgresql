@@ -53,7 +53,7 @@ newSth indbo str =
        return $ Statement {sExecute = fexecute sstate,
                            sExecuteMany = fexecutemany sstate,
                            finish = public_ffinish sstate,
-                           fetchRow = ffetchrow sstate}
+                           sFetchRow = fsfetchrow sstate}
 
 {- The deal with adding the \0 below is in response to an apparent bug in
 sqlite3.  See debign bug #343736. 
@@ -84,7 +84,7 @@ of each to see if it's NULL.  If it's not, fetch it as text and return that.
 Note that execute() will have already loaded up the first row -- and we
 do that each time.  so this function returns the row that is already in sqlite,
 then loads the next row. -}
-ffetchrow sstate = modifyMVar (stomv sstate) dofetchrow
+fsfetchrow sstate = modifyMVar (stomv sstate) dofetchrow
     where dofetchrow Empty = return (Empty, Nothing)
           dofetchrow (Prepared _) = 
               throwDyn $ SqlError {seState = "HDBC Sqlite3 fetchrow",
