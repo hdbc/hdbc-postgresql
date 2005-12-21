@@ -39,20 +39,19 @@ data StoState = Empty           -- ^ Not initialized or last execute/fetchrow ha
               | Executed Stmt   -- ^ Executed and more rows are expected
      deriving (Eq, Show, Read)
 
-data SState = {dbo :: Sqlite3,
-               stomv :: MVar StoState,
-               query :: String}
+data SState = SState {dbo :: Sqlite3,
+                      stomv :: MVar StoState,
+                      query :: String}
      deriving (Eq, Show)
 
 newSth :: Sqlite3 -> String -> IO Statement               
 newSth indbo str = 
     do newstomv <- newMVar Empty
        newmorerowsmv <- newMVar False
-       let sstate = {dbo = indbo,
-                     stomv = newstomv,
-                     morerowsmv = newmorerowsmv
-                     query = str}
-       fprepare sstate
+       let sstate = SState{dbo = indbo,
+                           stomv = newstomv,
+                           query = str}
+       modifyMVar_ (stomv sstate) (\_ -> fprepare sstate)
        return $ Statement {sExecute = fexecute sstate,
                            sExecuteMany = fexecutemany sstate,
                            finish = ffinish sstate,
@@ -62,9 +61,10 @@ newSth indbo str =
 sqlite3.  See debign bug #343736. 
 
 This function assumes that any existing query in the state has already
-been terminated.
+been terminated.  (FIXME: should check this at runtime.... never run fprepare
+unless state is Empty)
 -}
-fprepare :: SState -> IO ()
+fprepare :: SState -> IO Stmt
 fprepare sstate = withForeignPtr (dbo sstate)
   (\p -> withCStringLen ((query sstate) ++ "\0")
    (\(cs, cslen) -> alloca
@@ -73,11 +73,7 @@ fprepare sstate = withForeignPtr (dbo sstate)
          checkError ("prepare " ++ (show cslen) ++ ": " ++ str) dbo res
          newo <- peek newp
          fptr <- newForeignPtr sqlite3_finalizeptr newo
-         return (Prepared fptr,
-                 Statement {sExecute = fexecute sstate,
-                            sExecuteMany = fexecutemany sstate,
-                            finish = ffinish sstate,
-                            fetchRow = ffetchrow sstate})
+         return fptr
          )
      )
      )
@@ -131,23 +127,24 @@ fstep dbo p =
                                    seNativeError = fromIntegral x,
                                    seErrorMsg = "In HDBC step, unexpected result from sqlite3_step"}
 
-fexecute sstate args = 
-    -- First, finish up any existing stuff.
-    do 
-withForeignPtr o
+fexecute sstate args = modifyMVar (stomv sstate) doexecute
+    where doexecute (Executed sto) = ffinish sstate >> doexecute Empty
+          doexecute Empty =     -- already cleaned up from last time
+              do newsto <- fprepare sstate
+                 doexecute (Prepared sto)
+          doexecute (Prepared sto) = withForeignPtr sto
   (\p -> do c <- sqlite3_bind_parameter_count p
             when (c /= genericLength args)
                  (throwDyn $ SqlError {seState = "",
                                        seNativeError = (-1),
                                        seErrorMsg = "In HDBC execute, received " ++ (show args) ++ " but expected " ++ (show c) ++ " args."})
-            modifyMVar_ mv (\_ -> return False)
             sqlite3_reset p >>= checkError "execute (reset)" dbo
             zipWithM_ (bindArgs p) [1..c] args
-            newmv <- fstep dbo p
-            modifyMVar_ mv (\_ -> return newmv)
-            when (not newmv)    -- Clean up the sth now, if there are no rows.
-                 (ffinish o)
-            return (-1)
+            r <- fstep dbo p
+            if r
+               then return (Executed sto, (-1))
+               else do ffinish sstate
+                       return (Empty, 0)
   )
   where bindArgs p i Nothing =
             sqlite3_bind_null p i >>= 
@@ -156,11 +153,11 @@ withForeignPtr o
              (\(cs, len) -> do r <- sqlite3_bind_text2 p i cs 
                                     (fromIntegral len)
                                checkError ("execute (binding column " ++ 
-                                           (show i) ++ ")") dbo r
+                                           (show i) ++ ")") (dbo sstate) r
              )
 
-fexecutemany mv dbo o arglist =
-    mapM (fexecute mv dbo o) arglist >>= return . genericLength
+fexecutemany sstate arglist =
+    mapM (fexecute sstate) arglist >>= return . genericLength
 
 --ffinish o = withForeignPtr o (\p -> sqlite3_finalize p >>= checkError "finish")
 ffinish = finalizeForeignPtr
