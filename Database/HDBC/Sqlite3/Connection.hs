@@ -63,7 +63,7 @@ begin_transaction :: Sqlite3 -> IO ()
 begin_transaction o = frun o "BEGIN" [] >> return ()
 
 frun o query args =
-    do sth <- fprepare o query
+    do sth <- newSth o query
        res <- sExecute sth args
        finish sth
        return res

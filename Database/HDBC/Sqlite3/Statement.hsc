@@ -49,10 +49,10 @@ newSth indbo str =
        let sstate = SState{dbo = indbo,
                            stomv = newstomv,
                            query = str}
-       modifyMVar_ (stomv sstate) (\_ -> fprepare sstate)
+       modifyMVar_ (stomv sstate) (\_ -> (fprepare sstate >>= return . Prepared))
        return $ Statement {sExecute = fexecute sstate,
                            sExecuteMany = fexecutemany sstate,
-                           finish = ffinish sstate,
+                           finish = public_ffinish sstate,
                            fetchRow = ffetchrow sstate}
 
 {- The deal with adding the \0 below is in response to an apparent bug in
@@ -66,13 +66,12 @@ fprepare :: SState -> IO Stmt
 fprepare sstate = withForeignPtr (dbo sstate)
   (\p -> withCStringLen ((query sstate) ++ "\0")
    (\(cs, cslen) -> alloca
-    (\(newp::Ptr (Ptr CStmt)) -> modifyMVar_ (stomv sstate) (\_ ->
+    (\(newp::Ptr (Ptr CStmt)) -> 
      (do res <- sqlite3_prepare p cs (fromIntegral cslen) newp nullPtr
-         checkError ("prepare " ++ (show cslen) ++ ": " ++ (query sstate)) dbo res
+         checkError ("prepare " ++ (show cslen) ++ ": " ++ (query sstate)) 
+                    (dbo sstate) res
          newo <- peek newp
-         fptr <- newForeignPtr sqlite3_finalizeptr newo
-         return fptr
-         )
+         newForeignPtr sqlite3_finalizeptr newo
      )
      )
    )
@@ -95,10 +94,10 @@ ffetchrow sstate = modifyMVar (stomv sstate) dofetchrow
               do ccount <- sqlite3_column_count p
                  -- fetch the data
                  res <- mapM (getCol p) [0..(ccount - 1)]
-                 r <- fstep sto p
+                 r <- fstep (dbo sstate) p
                  if r
                     then return (Executed sto, Just res)
-                    else do ffinish sstate
+                    else do ffinish sto
                             return (Empty, Just res)
                                                      )
  
@@ -126,7 +125,7 @@ fstep dbo p =
                                    seErrorMsg = "In HDBC step, unexpected result from sqlite3_step"}
 
 fexecute sstate args = modifyMVar (stomv sstate) doexecute
-    where doexecute (Executed sto) = ffinish sstate >> doexecute Empty
+    where doexecute (Executed sto) = ffinish sto >> doexecute Empty
           doexecute Empty =     -- already cleaned up from last time
               do sto <- fprepare sstate
                  doexecute (Prepared sto)
@@ -136,17 +135,18 @@ fexecute sstate args = modifyMVar (stomv sstate) doexecute
                    (throwDyn $ SqlError {seState = "",
                                          seNativeError = (-1),
                                          seErrorMsg = "In HDBC execute, received " ++ (show args) ++ " but expected " ++ (show c) ++ " args."})
-                 sqlite3_reset p >>= checkError "execute (reset)" dbo
+                 sqlite3_reset p >>= checkError "execute (reset)" (dbo sstate)
                  zipWithM_ (bindArgs p) [1..c] args
-                 r <- fstep dbo p
+                 r <- fstep (dbo sstate) p
                  if r
                     then return (Executed sto, (-1))
-                    else do ffinish sstate
+                    else do ffinish sto
                             return (Empty, 0)
                                                         )
           bindArgs p i Nothing =
               sqlite3_bind_null p i >>= 
-                checkError ("execute (binding NULL column " ++ (show i) ++ ")") dbo
+                checkError ("execute (binding NULL column " ++ (show i) ++ ")")
+                           (dbo sstate)
           bindArgs p i (Just str) = withCStringLen str 
              (\(cs, len) -> do r <- sqlite3_bind_text2 p i cs 
                                     (fromIntegral len)
@@ -158,6 +158,12 @@ fexecutemany sstate arglist =
     mapM (fexecute sstate) arglist >>= return . genericLength
 
 --ffinish o = withForeignPtr o (\p -> sqlite3_finalize p >>= checkError "finish")
+-- Finish and change state
+public_ffinish sstate = modifyMVar_ (stomv sstate) worker
+    where worker (Empty) = return Empty
+          worker (Prepared sto) = ffinish sto >> return Empty
+          worker (Executed sto) = ffinish sto >> return Empty
+    
 ffinish = finalizeForeignPtr
 
 foreign import ccall unsafe "sqlite3.h &sqlite3_finalize"
