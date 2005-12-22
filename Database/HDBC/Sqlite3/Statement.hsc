@@ -72,7 +72,7 @@ been terminated.  (FIXME: should check this at runtime.... never run fprepare
 unless state is Empty)
 -}
 fprepare :: SState -> IO Stmt
-fprepare sstate = withForeignPtr (dbo sstate)
+fprepare sstate = withSqlite3 (dbo sstate)
   (\p -> withCStringLen ((query sstate) ++ "\0")
    (\(cs, cslen) -> alloca
     (\(newp::Ptr (Ptr CStmt)) -> 
@@ -100,7 +100,7 @@ ffetchrow sstate = modifyMVar (stomv sstate) dofetchrow
               throwDyn $ SqlError {seState = "HDBC Sqlite3 fetchrow",
                                    seNativeError = 0,
                                    seErrorMsg = "Attempt to fetch row from Statement that has not been executed.  Query was: " ++ (query sstate)}
-          dofetchrow (Executed sto) = withForeignPtr sto (\p ->
+          dofetchrow (Executed sto) = withStmt sto (\p ->
               do ccount <- sqlite3_column_count p
                  -- fetch the data
                  res <- mapM (getCol p) [0..(ccount - 1)]
@@ -140,7 +140,7 @@ fexecute sstate args = modifyMVar (stomv sstate) doexecute
           doexecute Empty =     -- already cleaned up from last time
               do sto <- fprepare sstate
                  doexecute (Prepared sto)
-          doexecute (Prepared sto) = withForeignPtr sto (\p -> 
+          doexecute (Prepared sto) = withStmt sto (\p -> 
               do c <- sqlite3_bind_parameter_count p
                  when (c /= genericLength args)
                    (throwDyn $ SqlError {seState = "",
@@ -176,8 +176,8 @@ public_ffinish sstate = modifyMVar_ (stomv sstate) worker
           worker (Prepared sto) = ffinish (dbo sstate) sto >> return Empty
           worker (Executed sto) = ffinish (dbo sstate) sto >> return Empty
     
-ffinish dbo o = withForeignPtr o (\p -> do r <- sqlite3_finalize p
-                                           checkError "finish" dbo r)
+ffinish dbo o = withRawStmt o (\p -> do r <- sqlite3_finalize p
+                                        checkError "finish" dbo r)
 
 foreign import ccall unsafe "hdbc-sqlite3-helper.h &sqlite3_finalize_finalizer"
   sqlite3_finalizeptr :: FunPtr ((Ptr CStmt) -> IO ())

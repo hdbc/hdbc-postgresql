@@ -73,7 +73,7 @@ fcommit o = do frun o "COMMIT" []
                begin_transaction o
 frollback o =  do frun o "ROLLBACK" []
                   begin_transaction o
-fdisconnect o = withForeignPtr o (\p -> do r <- sqlite3_close p
+fdisconnect o = withRawSqlite3 o (\p -> do r <- sqlite3_close p
                                            checkError "disconnect" o r)
 
 foreign import ccall unsafe "hdbc-sqlite3-helper.h sqlite3_open2"

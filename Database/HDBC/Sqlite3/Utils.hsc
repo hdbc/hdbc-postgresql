@@ -1,4 +1,4 @@
-{-
+{- -*- mode: haskell; -*- 
 Copyright (C) 2005 John Goerzen <jgoerzen@complete.org>
 
 This program is free software; you can redistribute it and\/or modify
@@ -25,17 +25,39 @@ import Database.HDBC.Types
 import Database.HDBC.Sqlite3.Types
 import Foreign.C.Types
 import Control.Exception
+import Foreign.Storable
+
+#include "hdbc-sqlite3-helper.h"
 
 checkError :: String -> Sqlite3 -> CInt -> IO ()
 checkError _ _ 0 = return ()
 checkError msg o res =
-    withForeignPtr o
+    withSqlite3 o
      (\p -> do rc <- sqlite3_errmsg p
                str <- peekCString rc
                throwDyn $ SqlError {seState = "",
                                     seNativeError = fromIntegral res,
                                     seErrorMsg = msg ++ ": " ++ str}
      )
+
+withSqlite3 :: Sqlite3 -> (Ptr CSqlite3 -> IO b) -> IO b
+withSqlite3 = genericUnwrap
+
+withRawSqlite3 :: Sqlite3 -> (Ptr CSqlite3 -> IO b) -> IO b
+withRawSqlite3 = withForeignPtr
+
+withStmt :: Stmt -> (Ptr CStmt -> IO b) -> IO b
+withStmt = genericUnwrap
+
+withRawStmt :: Stmt -> (Ptr CStmt -> IO b) -> IO b
+withRawStmt = withForeignPtr
+
+
+genericUnwrap :: ForeignPtr a -> (Ptr a -> IO b) -> IO b
+genericUnwrap fptr action = withForeignPtr fptr (\structptr ->
+    do objptr <- #{peek finalizeonce, encapobj} structptr
+       action objptr
+                                                )
 
 foreign import ccall unsafe "sqlite3.h sqlite3_errmsg"
   sqlite3_errmsg :: (Ptr CSqlite3) -> IO CString
