@@ -76,6 +76,17 @@ executeMany = dbTestCase (\dbh ->
                   map Just ["2", "1341", "bar"],
                   [Just "3", Nothing, Nothing]]
 
+testsFetchAllRows = dbTestCase (\dbh ->
+    do sth <- prepare dbh "INSERT INTO test1 VALUES ('sFetchAllRows', ?, NULL, NULL)"
+       sExecuteMany sth rows
+       commit dbh
+       sth <- prepare dbh "SELECT testid FROM test1 WHERE testname = 'sFetchAllRows' ORDER BY testid"
+       sExecute sth []
+       results <- sFetchAllRows sth
+       assertEqual "" rows results
+                               )
+    where rows = map (\x -> [Just . show $ x]) [1..9]
+
 tests = TestList
         [
          TestLabel "openClosedb" openClosedb,
@@ -85,6 +96,7 @@ tests = TestList
          TestLabel "runReplace" runReplace,
          TestLabel "executeReplace" executeReplace,
          TestLabel "executeMany" executeMany,
+         TestLabel "sFetchAllRows" testsFetchAllRows,
          -- commit, rollback
          TestLabel "dropTable" dropTable
          ]
