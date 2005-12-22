@@ -76,11 +76,11 @@ frollback o =  do frun o "ROLLBACK" []
 fdisconnect o = withForeignPtr o (\p -> do r <- sqlite3_close p
                                            checkError "disconnect" o r)
 
-foreign import ccall unsafe "sqlite3.h sqlite3_open"
+foreign import ccall unsafe "hdbc-sqlite3-helper.h sqlite3_open2"
   sqlite3_open :: CString -> (Ptr (Ptr CSqlite3)) -> IO CInt
 
-foreign import ccall unsafe "sqlite3.h &sqlite3_close"
+foreign import ccall unsafe "hdbc-sqlite3-helper.h &sqlite3_close_finalizer"
   sqlite3_closeptr :: FunPtr ((Ptr CSqlite3) -> IO ())
 
-foreign import ccall unsafe "sqlite3.h sqlite3_close"
+foreign import ccall unsafe "hdbc-sqlite3-helper.h sqlite3_close_app"
   sqlite3_close :: Ptr CSqlite3 -> IO CInt

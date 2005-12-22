@@ -107,7 +107,7 @@ ffetchrow sstate = modifyMVar (stomv sstate) dofetchrow
                  r <- fstep (dbo sstate) p
                  if r
                     then return (Executed sto, Just res)
-                    else do ffinish sto
+                    else do ffinish (dbo sstate) sto
                             return (Empty, Just res)
                                                          )
  
@@ -136,7 +136,7 @@ fstep dbo p =
                                    seErrorMsg = "In HDBC step, unexpected result from sqlite3_step"}
 
 fexecute sstate args = modifyMVar (stomv sstate) doexecute
-    where doexecute (Executed sto) = ffinish sto >> doexecute Empty
+    where doexecute (Executed sto) = ffinish (dbo sstate) sto >> doexecute Empty
           doexecute Empty =     -- already cleaned up from last time
               do sto <- fprepare sstate
                  doexecute (Prepared sto)
@@ -151,7 +151,7 @@ fexecute sstate args = modifyMVar (stomv sstate) doexecute
                  r <- fstep (dbo sstate) p
                  if r
                     then return (Executed sto, (-1))
-                    else do ffinish sto
+                    else do ffinish (dbo sstate) sto
                             return (Empty, 0)
                                                         )
           bindArgs p i SqlNull =
@@ -173,18 +173,19 @@ fexecutemany sstate arglist =
 -- Finish and change state
 public_ffinish sstate = modifyMVar_ (stomv sstate) worker
     where worker (Empty) = return Empty
-          worker (Prepared sto) = ffinish sto >> return Empty
-          worker (Executed sto) = ffinish sto >> return Empty
+          worker (Prepared sto) = ffinish (dbo sstate) sto >> return Empty
+          worker (Executed sto) = ffinish (dbo sstate) sto >> return Empty
     
-ffinish = finalizeForeignPtr
+ffinish dbo o = withForeignPtr o (\p -> do r <- sqlite3_finalize p
+                                           checkError "finish" dbo r)
 
-foreign import ccall unsafe "sqlite3.h &sqlite3_finalize"
+foreign import ccall unsafe "hdbc-sqlite3-helper.h &sqlite3_finalize_finalizer"
   sqlite3_finalizeptr :: FunPtr ((Ptr CStmt) -> IO ())
 
-foreign import ccall unsafe "sqlite3.h sqlite3_finalize"
+foreign import ccall unsafe "hdbc-sqlite3-helper.h sqlite3_finalize_app"
   sqlite3_finalize :: (Ptr CStmt) -> IO CInt
 
-foreign import ccall unsafe "sqlite3.h sqlite3_prepare"
+foreign import ccall unsafe "hdbc-sqlite3-helper.h sqlite3_prepare2"
   sqlite3_prepare :: (Ptr CSqlite3) -> CString -> CInt -> Ptr (Ptr CStmt) -> Ptr (Ptr CString) -> IO CInt
 
 foreign import ccall unsafe "sqlite3.h sqlite3_bind_parameter_count"

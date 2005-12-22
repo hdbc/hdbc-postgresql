@@ -15,5 +15,5 @@ Other-Modules: Database.HDBC.Sqlite3.Connection,
 -- CPP extension is really only needed in FiniteMap.hs and Rfc2821.hs
 C-Sources: hdbc-sqlite3-helper.c
 Build-Depends: base, mtl, HDBC
-GHC-Options: -O2 -fglasgow-exts 
-CC-Options: -I.
+GHC-Options: -O2 -fglasgow-exts  -optc
+CC-Options: -I. -ggdb3
