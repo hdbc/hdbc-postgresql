@@ -49,7 +49,6 @@ data SState = SState {dbo :: Sqlite3,
 newSth :: Sqlite3 -> String -> IO Statement               
 newSth indbo str = 
     do newstomv <- newMVar Empty
-       newmorerowsmv <- newMVar False
        let sstate = SState{dbo = indbo,
                            stomv = newstomv,
                            query = str}
@@ -89,6 +88,7 @@ of each to see if it's NULL.  If it's not, fetch it as text and return that.
 Note that execute() will have already loaded up the first row -- and we
 do that each time.  so this function returns the row that is already in sqlite,
 then loads the next row. -}
+ffetchrow :: SState -> IO (Maybe [SqlValue])
 ffetchrow sstate = modifyMVar (stomv sstate) dofetchrow
     where dofetchrow Empty = return (Empty, Nothing)
           dofetchrow (Prepared _) = 
@@ -110,11 +110,12 @@ ffetchrow sstate = modifyMVar (stomv sstate) dofetchrow
              do t <- sqlite3_column_type p icol
                 if t == #{const SQLITE_NULL}
                    then return SqlNull
-                   else do t <- sqlite3_column_text p icol
+                   else do text <- sqlite3_column_text p icol
                            len <- sqlite3_column_bytes p icol
-                           s <- peekCStringLen (t, fromIntegral len)
+                           s <- peekCStringLen (text, fromIntegral len)
                            return (SqlString s)
 
+fstep :: Sqlite3 -> Ptr CStmt -> IO Bool
 fstep dbo p =
     do r <- sqlite3_step p
        case r of

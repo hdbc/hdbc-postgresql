@@ -19,8 +19,10 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 module Tests(tests) where
 import Test.HUnit
 import qualified Testbasics
+import qualified TestSbasics
 
 test1 = TestCase ("x" @=? "x")
 
 tests = TestList [TestLabel "test1" test1,
-                  TestLabel "Testbasics" Testbasics.tests]
+                  TestLabel "String basics" TestSbasics.tests,
+                  TestLabel "SqlValue basics" Testbasics.tests]

@@ -27,7 +27,7 @@ import Foreign.C.Types
 import Control.Exception
 
 checkError :: String -> Sqlite3 -> CInt -> IO ()
-checkError msg _ 0 = return ()
+checkError _ _ 0 = return ()
 checkError msg o res =
     withForeignPtr o
      (\p -> do rc <- sqlite3_errmsg p

@@ -1,4 +1,4 @@
-module Testbasics(tests) where
+module TestSbasics(tests) where
 import Test.HUnit
 import Database.HDBC
 import TestUtils
