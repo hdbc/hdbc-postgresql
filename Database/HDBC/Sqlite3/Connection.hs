@@ -39,38 +39,39 @@ connectSqlite3 fp =
               do res <- sqlite3_open cs p
                  o <- peek p
                  fptr <- newForeignPtr sqlite3_closeptr o
-                 newconn <- mkConn fptr
+                 newconn <- mkConn fp fptr
                  checkError ("connectSqlite3 " ++ fp) fptr res
                  return newconn
          )
         )
 
-mkConn :: Sqlite3 -> IO Connection
-mkConn obj =
+mkConn :: FilePath -> Sqlite3 -> IO Connection
+mkConn fp obj =
     do begin_transaction obj
        return $ Connection {
                             disconnect = fdisconnect obj,
                             commit = fcommit obj,
                             rollback = frollback obj,
-                            sRun = fsrun obj,
-                            prepare = newSth obj}
+                            run = frun obj,
+                            prepare = newSth obj,
+                            clone = connectSqlite3 fp }
 
 --------------------------------------------------
 -- Guts here
 --------------------------------------------------
 
 begin_transaction :: Sqlite3 -> IO ()
-begin_transaction o = fsrun o "BEGIN" [] >> return ()
+begin_transaction o = frun o "BEGIN" [] >> return ()
 
-fsrun o query args =
+frun o query args =
     do sth <- newSth o query
-       res <- sExecute sth args
+       res <- execute sth args
        finish sth
        return res
 
-fcommit o = do fsrun o "COMMIT" []
+fcommit o = do frun o "COMMIT" []
                begin_transaction o
-frollback o =  do fsrun o "ROLLBACK" []
+frollback o =  do frun o "ROLLBACK" []
                   begin_transaction o
 fdisconnect o = withForeignPtr o (\p -> do r <- sqlite3_close p
                                            checkError "disconnect" o r)

@@ -34,6 +34,10 @@ import Control.Exception
 
 #include <sqlite3.h>
 
+{- One annoying thing about Sqlite is that a disconnect operation will actually
+fail if there are any active statements.  This is highly annoying, and makes
+for some somewhat complex algorithms. -}
+
 data StoState = Empty           -- ^ Not initialized or last execute/fetchrow had no results
               | Prepared Stmt   -- ^ Prepared but not executed
               | Executed Stmt   -- ^ Executed and more rows are expected
@@ -50,13 +54,14 @@ newSth indbo str =
                            stomv = newstomv,
                            query = str}
        modifyMVar_ (stomv sstate) (\_ -> (fprepare sstate >>= return . Prepared))
-       return $ Statement {sExecute = fexecute sstate,
-                           sExecuteMany = fexecutemany sstate,
+       return $ Statement {execute = fexecute sstate,
+                           executeMany = fexecutemany sstate,
                            finish = public_ffinish sstate,
-                           sFetchRow = fsfetchrow sstate}
+                           fetchRow = ffetchrow sstate,
+                           originalQuery = str}
 
 {- The deal with adding the \0 below is in response to an apparent bug in
-sqlite3.  See debign bug #343736. 
+sqlite3.  See debian bug #343736. 
 
 This function assumes that any existing query in the state has already
 been terminated.  (FIXME: should check this at runtime.... never run fprepare
@@ -84,7 +89,7 @@ of each to see if it's NULL.  If it's not, fetch it as text and return that.
 Note that execute() will have already loaded up the first row -- and we
 do that each time.  so this function returns the row that is already in sqlite,
 then loads the next row. -}
-fsfetchrow sstate = modifyMVar (stomv sstate) dofetchrow
+ffetchrow sstate = modifyMVar (stomv sstate) dofetchrow
     where dofetchrow Empty = return (Empty, Nothing)
           dofetchrow (Prepared _) = 
               throwDyn $ SqlError {seState = "HDBC Sqlite3 fetchrow",
@@ -99,16 +104,16 @@ fsfetchrow sstate = modifyMVar (stomv sstate) dofetchrow
                     then return (Executed sto, Just res)
                     else do ffinish sto
                             return (Empty, Just res)
-                                                     )
+                                                         )
  
           getCol p icol = 
              do t <- sqlite3_column_type p icol
                 if t == #{const SQLITE_NULL}
-                   then return Nothing
+                   then return SqlNull
                    else do t <- sqlite3_column_text p icol
                            len <- sqlite3_column_bytes p icol
                            s <- peekCStringLen (t, fromIntegral len)
-                           return (Just s)
+                           return (SqlString s)
 
 fstep dbo p =
     do r <- sqlite3_step p
@@ -143,17 +148,18 @@ fexecute sstate args = modifyMVar (stomv sstate) doexecute
                     else do ffinish sto
                             return (Empty, 0)
                                                         )
-          bindArgs p i Nothing =
+          bindArgs p i SqlNull =
               sqlite3_bind_null p i >>= 
                 checkError ("execute (binding NULL column " ++ (show i) ++ ")")
                            (dbo sstate)
-          bindArgs p i (Just str) = withCStringLen str 
+          bindArgs p i arg = withCStringLen (fromSql arg) 
              (\(cs, len) -> do r <- sqlite3_bind_text2 p i cs 
                                     (fromIntegral len)
                                checkError ("execute (binding column " ++ 
                                            (show i) ++ ")") (dbo sstate) r
              )
 
+-- FIXME: needs a faster algorithm.
 fexecutemany sstate arglist =
     mapM (fexecute sstate) arglist >>= return . genericLength
 
