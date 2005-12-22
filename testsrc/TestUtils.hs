@@ -12,6 +12,6 @@ sqlTestCase a =
 
 dbTestCase a =
     TestCase (do dbh <- connectDB
-                 handleSqlError (a dbh)
-                 handleSqlError (disconnect dbh)
+                 finally (handleSqlError (a dbh))
+                         (handleSqlError (disconnect dbh))
              )

@@ -42,6 +42,11 @@ data StoState = Empty           -- ^ Not initialized or last execute/fetchrow ha
               | Prepared Stmt   -- ^ Prepared but not executed
               | Executed Stmt   -- ^ Executed and more rows are expected
 
+instance Show StoState where
+    show Empty = "Empty"
+    show (Prepared _) = "Prepared"
+    show (Executed _) = "Executed"
+
 data SState = SState {dbo :: Sqlite3,
                       stomv :: MVar StoState,
                       query :: String}
