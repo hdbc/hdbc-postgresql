@@ -40,6 +40,17 @@ checkError msg o res =
                                     seErrorMsg = msg ++ ": " ++ str}
      )
 
+{- This is a little hairy.
+
+We have a CSqlite3 object that is actually a finalizeonce wrapper around
+the real object.  We use withSqlite3 to dereference the foreign pointer,
+and then extract the pointer to the real object from the finalizeonce struct.
+
+But, when we close the connection, we need the finalizeonce struct, so that's
+done by withRawSqlite3.
+
+Ditto for statements. -}
+
 withSqlite3 :: Sqlite3 -> (Ptr CSqlite3 -> IO b) -> IO b
 withSqlite3 = genericUnwrap
 
