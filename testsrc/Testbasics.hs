@@ -114,7 +114,7 @@ testWithTransaction = dbTestCase (\dbh ->
     do sth <- prepare dbh "INSERT INTO test1 VALUES ('withTransaction', ?, NULL, NULL)"
        sExecute sth [Just "0"]
        commit dbh
-       qrysth <- prepare dbh "SELECT testid FROM test1 WHERE testname = 'basicTransactions' ORDER BY testid"
+       qrysth <- prepare dbh "SELECT testid FROM test1 WHERE testname = 'withTransaction' ORDER BY testid"
        sExecute qrysth []
        sFetchAllRows qrysth >>= (assertEqual "initial commit" [[Just "0"]])
        
