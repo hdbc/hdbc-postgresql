@@ -3,6 +3,7 @@ import Test.HUnit
 import Database.HDBC
 import TestUtils
 import System.IO
+import Control.Exception
 
 openClosedb = sqlTestCase $ 
     do dbh <- connectDB
@@ -87,6 +88,49 @@ testsFetchAllRows = dbTestCase (\dbh ->
                                )
     where rows = map (\x -> [Just . show $ x]) [1..9]
 
+basicTransactions = dbTestCase (\dbh ->
+    do sth <- prepare dbh "INSERT INTO test1 VALUES ('basicTransactions', ?, NULL, NULL)"
+       sExecute sth [Just "0"]
+       commit dbh
+       qrysth <- prepare dbh "SELECT testid FROM test1 WHERE testname = 'basicTransactions' ORDER BY testid"
+       sExecute qrysth []
+       sFetchAllRows qrysth >>= (assertEqual "initial commit" [[Just "0"]])
+
+       -- Now try a rollback
+       sExecuteMany sth rows
+       rollback dbh
+       sExecute qrysth []
+       sFetchAllRows qrysth >>= (assertEqual "rollback" [[Just "0"]])
+
+       -- Now try another commit
+       sExecuteMany sth rows
+       commit dbh
+       sExecute qrysth []
+       sFetchAllRows qrysth >>= (assertEqual "final commit" ([Just "0"]:rows))
+                               )
+    where rows = map (\x -> [Just . show $ x]) [1..9]
+
+testWithTransaction = dbTestCase (\dbh ->
+    do sth <- prepare dbh "INSERT INTO test1 VALUES ('withTransaction', ?, NULL, NULL)"
+       sExecute sth [Just "0"]
+       commit dbh
+       qrysth <- prepare dbh "SELECT testid FROM test1 WHERE testname = 'basicTransactions' ORDER BY testid"
+       sExecute qrysth []
+       sFetchAllRows qrysth >>= (assertEqual "initial commit" [[Just "0"]])
+       
+       -- Let's try a rollback.
+       try $ withTransaction dbh (\_ -> do sExecuteMany sth rows
+                                           fail "Foo")
+       sExecute qrysth []
+       sFetchAllRows qrysth >>= (assertEqual "rollback" [[Just "0"]])
+
+       -- And now a commit.
+       withTransaction dbh (\_ -> sExecuteMany sth rows)
+       sExecute qrysth []
+       sFetchAllRows qrysth >>= (assertEqual "final commit" ([Just "0"]:rows))
+                               )
+    where rows = map (\x -> [Just . show $ x]) [1..9]
+       
 tests = TestList
         [
          TestLabel "openClosedb" openClosedb,
@@ -97,6 +141,7 @@ tests = TestList
          TestLabel "executeReplace" executeReplace,
          TestLabel "executeMany" executeMany,
          TestLabel "sFetchAllRows" testsFetchAllRows,
-         -- commit, rollback
+         TestLabel "basicTransactions" basicTransactions,
+         TestLabel "withTransaction" testWithTransaction,
          TestLabel "dropTable" dropTable
          ]
