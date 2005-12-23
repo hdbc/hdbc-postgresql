@@ -1,11 +1,11 @@
-module Database.HDBC.Sqlite3.Types
+module Database.HDBC.PostgreSQL.Types
 where
 
 import Foreign.ForeignPtr
 
-data CSqlite3
-type Sqlite3 = ForeignPtr CSqlite3
+data CConn = CConn
+type Conn = ForeignPtr CConn
 
-data CStmt
+data CStmt = CStmt
 type Stmt = ForeignPtr CStmt
 

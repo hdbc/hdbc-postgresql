@@ -17,12 +17,12 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 -}
 
-module Database.HDBC.Sqlite3.Utils where
+module Database.HDBC.PostgreSQL.Utils where
 import Foreign.C.String
 import Foreign.ForeignPtr
 import Foreign.Ptr
 import Database.HDBC.Types
-import Database.HDBC.Sqlite3.Types
+import Database.HDBC.PostgreSQL.Types
 import Foreign.C.Types
 import Control.Exception
 import Foreign.Storable
