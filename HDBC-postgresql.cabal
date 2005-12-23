@@ -16,4 +16,4 @@ Extensions: ExistentialQuantification
 C-Sources: hdbc-postgresql-helper.c
 Build-Depends: base, mtl, HDBC
 GHC-Options: -O2
-CC-Options: -I. 
+CC-Options: -I. -I/usr/include/postgresql

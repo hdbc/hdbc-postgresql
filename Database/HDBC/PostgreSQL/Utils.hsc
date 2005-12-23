@@ -27,7 +27,7 @@ import Foreign.C.Types
 import Control.Exception
 import Foreign.Storable
 
-#include "hdbc-sqlite3-helper.h"
+#include "hdbc-postgresql-helper.h"
 
 checkError :: String -> Sqlite3 -> CInt -> IO ()
 checkError _ _ 0 = return ()
@@ -39,6 +39,14 @@ checkError msg o res =
                                     seNativeError = fromIntegral res,
                                     seErrorMsg = msg ++ ": " ++ str}
      )
+
+raiseError :: String -> CInt -> (Ptr CConn) -> IO a
+raiseError msg cconn code =
+    do rc <- pqerrorMessage cconn
+       str <- peekCString rc
+       throwDyn $ SqlError {seState = "",
+                            seNativeError = fromIntegral code,
+                            seErrorMsg = msg ++ ": " ++ str}
 
 {- This is a little hairy.
 
@@ -73,3 +81,5 @@ genericUnwrap fptr action = withForeignPtr fptr (\structptr ->
 foreign import ccall unsafe "sqlite3.h sqlite3_errmsg"
   sqlite3_errmsg :: (Ptr CSqlite3) -> IO CString
 
+foreign import ccall unsafe "libpq-fe.h PQerrorMessage"
+  pqerrorMessage :: Ptr CConn -> IO CString

@@ -1,4 +1,4 @@
-{-
+{- -*- mode: haskell; -*-
 Copyright (C) 2005 John Goerzen <jgoerzen@complete.org>
 
 This program is free software; you can redistribute it and\/or modify
@@ -17,19 +17,36 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 -}
 
-module Database.HDBC.Sqlite3.Connection where
+module Database.HDBC.PostgreSQL.Connection (connectPostgreSQL) where
 
 import Database.HDBC.Types
 import Database.HDBC
-import Database.HDBC.Sqlite3.Types
-import Database.HDBC.Sqlite3.Statement
+import Database.HDBC.PostgreSQL.Types
+import Database.HDBC.PostgreSQL.Statement
 import Foreign.C.Types
 import Foreign.C.String
 import Foreign.Marshal
 import Foreign.Storable
-import Database.HDBC.Sqlite3.Utils
+import Database.HDBC.PostgreSQL.Utils
 import Foreign.ForeignPtr
 import Foreign.Ptr
+
+#include <libpq-fe.h>
+
+{- | Connect to a PostgreSQL server.
+
+See <http://www.postgresql.org/docs/8.1/static/libpq.html> for the meaning
+of the connection string. -}
+connectPostgreSQL :: String -> IO Connection
+connectPostgreSQL args = withCString args $
+  \cs -> do ptr <- pqconnectdb cs
+            fptr <- newForeignPtr pqfinishptr ptr
+            withForeignPointer fptr (\p ->
+               do status <- pqstatus p
+                  case status of
+                     #{const CONNECTION_OK} -> mkConn args fptr
+                     _ -> raiseError "connectPostgreSQL" p status
+                                    )
 
 connectSqlite3 :: FilePath -> IO Connection
 connectSqlite3 fp = 
@@ -81,6 +98,12 @@ frollback o =  do frun o "ROLLBACK" []
                   begin_transaction o
 fdisconnect o = withRawSqlite3 o (\p -> do r <- sqlite3_close p
                                            checkError "disconnect" o r)
+
+foreign import ccall unsafe "libpq-fe.h PQconnectdb"
+  pqconnectdb :: CString -> Ptr CConn
+
+foreign import ccall unsafe "libpq-fe.h PQstatus"
+  pqstatus :: Ptr CConn -> IO #{type ConnStatusType}
 
 foreign import ccall unsafe "hdbc-sqlite3-helper.h sqlite3_open2"
   sqlite3_open :: CString -> (Ptr (Ptr CSqlite3)) -> IO CInt
