@@ -42,7 +42,10 @@ dropTable = dbTestCase (\dbh ->
 
 runReplace = dbTestCase (\dbh ->
     do r <- run dbh "INSERT INTO test1 VALUES (?, ?, ?, ?)" r1
-       assertEqual "insert retval" 1 r
+       case hdbcDriverName dbh of
+          "sqlite3" -> -- No support for number of rows modified in sqlite3
+                       assertEqual "insert retval" (-1) r
+          _ -> assertEqual "insert retval" 1 r
        run dbh "INSERT INTO test1 VALUES (?, ?, ?, ?)" r2
        commit dbh
        sth <- prepare dbh "SELECT * FROM test1 WHERE testname = 'runReplace' ORDER BY testid"
