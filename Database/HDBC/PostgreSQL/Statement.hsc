@@ -16,11 +16,11 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 -}
-module Database.HDBC.Sqlite3.Statement where
+module Database.HDBC.PostgreSQL.Statement where
 import Database.HDBC.Types
 import Database.HDBC
-import Database.HDBC.Sqlite3.Types
-import Database.HDBC.Sqlite3.Utils
+import Database.HDBC.PostgreSQL.Types
+import Database.HDBC.PostgreSQL.Utils
 import Foreign.C.Types
 import Foreign.ForeignPtr
 import Foreign.Ptr
@@ -32,7 +32,7 @@ import Control.Monad
 import Data.List
 import Control.Exception
 
-#include <sqlite3.h>
+#include <libpq-fe.h>
 
 {- One annoying thing about Sqlite is that a disconnect operation will actually
 fail if there are any active statements.  This is highly annoying, and makes

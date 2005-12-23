@@ -32,6 +32,7 @@ import Foreign.ForeignPtr
 import Foreign.Ptr
 
 #include <libpq-fe.h>
+#include <pg_config.h>
 
 {- | Connect to a PostgreSQL server.
 
@@ -47,37 +48,27 @@ connectPostgreSQL args = withCString args $
                      #{const CONNECTION_OK} -> mkConn args fptr
                      _ -> raiseError "connectPostgreSQL" p status
                                     )
-
-connectSqlite3 :: FilePath -> IO Connection
-connectSqlite3 fp = 
-    withCString fp 
-        (\cs -> alloca 
-         (\(p::Ptr (Ptr CSqlite3)) ->
-              do res <- sqlite3_open cs p
-                 o <- peek p
-                 fptr <- newForeignPtr sqlite3_closeptr o
-                 newconn <- mkConn fp fptr
-                 checkError ("connectSqlite3 " ++ fp) fptr res
-                 return newconn
-         )
-        )
-
-mkConn :: FilePath -> Sqlite3 -> IO Connection
-mkConn fp obj =
+-- FIXME: environment may have changed, should use pgsql enquiries
+-- for clone.
+mkConn :: String -> CConn -> IO Connection
+mkConn args conn = withConn obj $
+  \cconn -> 
     do begin_transaction obj
-       ver <- (sqlite3_libversion >>= peekCString)
+       protover <- pqprotocolVersion cconn
+       serverver <- pqserverVersion cconn
+       let clientver = #{const_str PG_VERSION}
        return $ Connection {
                             disconnect = fdisconnect obj,
                             commit = fcommit obj,
                             rollback = frollback obj,
                             run = frun obj,
                             prepare = newSth obj,
-                            clone = connectSqlite3 fp,
-                            hdbcDriverName = "sqlite3",
-                            hdbcClientVer = ver,
-                            proxiedClientName = "sqlite3",
-                            proxiedClientVer = ver,
-                            dbServerVer = ver}
+                            clone = connectPostgreSQL args,
+                            hdbcDriverName = "postgresql",
+                            hdbcClientVer = clientver,
+                            proxiedClientName = "postgresql",
+                            proxiedClientVer = show protover,
+                            dbServerVer = show serverver}
 
 --------------------------------------------------
 -- Guts here
@@ -96,8 +87,7 @@ fcommit o = do frun o "COMMIT" []
                begin_transaction o
 frollback o =  do frun o "ROLLBACK" []
                   begin_transaction o
-fdisconnect o = withRawSqlite3 o (\p -> do r <- sqlite3_close p
-                                           checkError "disconnect" o r)
+fdisconnect o = finalizeForeignPtr o
 
 foreign import ccall unsafe "libpq-fe.h PQconnectdb"
   pqconnectdb :: CString -> Ptr CConn
@@ -105,14 +95,11 @@ foreign import ccall unsafe "libpq-fe.h PQconnectdb"
 foreign import ccall unsafe "libpq-fe.h PQstatus"
   pqstatus :: Ptr CConn -> IO #{type ConnStatusType}
 
-foreign import ccall unsafe "hdbc-sqlite3-helper.h sqlite3_open2"
-  sqlite3_open :: CString -> (Ptr (Ptr CSqlite3)) -> IO CInt
+foreign import ccall unsafe "libpq-fe.h &PQfinish"
+  pqfinishptr :: FunPtr ((Ptr CConn) -> IO ())
 
-foreign import ccall unsafe "hdbc-sqlite3-helper.h &sqlite3_close_finalizer"
-  sqlite3_closeptr :: FunPtr ((Ptr CSqlite3) -> IO ())
+foreign import ccall unsafe "libpq-fe.h PQprotocolVersion"
+  pqprotocolVersion :: Ptr CConn -> IO CInt
 
-foreign import ccall unsafe "hdbc-sqlite3-helper.h sqlite3_close_app"
-  sqlite3_close :: Ptr CSqlite3 -> IO CInt
-
-foreign import ccall unsafe "sqlite3.h sqlite3_libversion"
-  sqlite3_libversion :: IO CString
+foreign import ccall unsafe "libpq-fe.h PQserverVersion"
+  pqserverVersion :: Ptr CConn -> IO CInt

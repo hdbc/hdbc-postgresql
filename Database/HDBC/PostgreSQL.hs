@@ -18,7 +18,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 -}
 
 {- |
-   Module     : Database.HDBC.Sqlite3
+   Module     : Database.HDBC.PostgreSQL
    Copyright  : Copyright (C) 2005 John Goerzen
    License    : GNU LGPL, version 2 or above
 
@@ -26,17 +26,17 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
    Stability  : provisional
    Portability: portable
 
-HDBC driver interface for Sqlite 3.x.
+HDBC driver interface for PostgreSQL 8.x
 
 Written by John Goerzen, jgoerzen\@complete.org
 -}
 
-module Database.HDBC.Sqlite3
+module Database.HDBC.PostgreSQL
     (
      connectSqlite3
     )
 
 where
 
-import Database.HDBC.Sqlite3.Connection(connectSqlite3)
+import Database.HDBC.PostgreSQL.Connection(connectPostgreSQL)
 
