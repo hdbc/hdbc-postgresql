@@ -34,58 +34,35 @@ import Control.Exception
 
 #include <libpq-fe.h>
 
-{- One annoying thing about Sqlite is that a disconnect operation will actually
-fail if there are any active statements.  This is highly annoying, and makes
-for some somewhat complex algorithms. -}
+data SState = 
+    SState { stomv :: MVar (Maybe Stmt),
+             nextrowmv :: MVar (Int),
+             dbo :: Conn,
+             squery :: String}
 
-data StoState = Empty           -- ^ Not initialized or last execute/fetchrow had no results
-              | Prepared Stmt   -- ^ Prepared but not executed
-              | Executed Stmt   -- ^ Executed and more rows are expected
+-- FIXME: we currently do no prepare optimization whatsoever.
 
-instance Show StoState where
-    show Empty = "Empty"
-    show (Prepared _) = "Prepared"
-    show (Executed _) = "Executed"
-
-data SState = SState {dbo :: Sqlite3,
-                      stomv :: MVar StoState,
-                      query :: String}
-
-newSth :: Sqlite3 -> String -> IO Statement               
-newSth indbo str = 
-    do newstomv <- newMVar Empty
-       let sstate = SState{dbo = indbo,
-                           stomv = newstomv,
-                           query = str}
-       modifyMVar_ (stomv sstate) (\_ -> (fprepare sstate >>= return . Prepared))
-       return $ Statement {execute = fexecute sstate,
-                           executeMany = fexecutemany sstate,
+newSth :: CConn -> String -> IO Statement               
+newSth indbo query = 
+    do newstomv <- newMVar Nothing
+       newnextrowmv <- newMVar 0
+       let sstate = SState {stomv = newstomv, nextrowmv = newnextrowmv,
+                            dbo = indbo, squery = query}
+       return $ Statement {execute = fexecute sstate query,
+                           executeMany = fexecutemany sstate query,
                            finish = public_ffinish sstate,
                            fetchRow = ffetchrow sstate,
-                           originalQuery = str}
+                           originalQuery = query}
 
-{- The deal with adding the \0 below is in response to an apparent bug in
-sqlite3.  See debian bug #343736. 
-
-This function assumes that any existing query in the state has already
-been terminated.  (FIXME: should check this at runtime.... never run fprepare
-unless state is Empty)
--}
-fprepare :: SState -> IO Stmt
-fprepare sstate = withSqlite3 (dbo sstate)
-  (\p -> withCStringLen ((query sstate) ++ "\0")
-   (\(cs, cslen) -> alloca
-    (\(newp::Ptr (Ptr CStmt)) -> 
-     (do res <- sqlite3_prepare p cs (fromIntegral cslen) newp nullPtr
-         checkError ("prepare " ++ (show cslen) ++ ": " ++ (query sstate)) 
-                    (dbo sstate) res
-         newo <- peek newp
-         newForeignPtr sqlite3_finalizeptr newo
-     )
-     )
-   )
-   )
+{- For now, we try to just  handle things as simply as possible.
+FIXME lots of room for improvement here (types, etc). -}
+fexecute sstate args = 
+    do public_ffinish sstate
+       
+       resptr <- pqexecParams (dbo sstate) (squery sstate)
+                 (genericLength args) nullPtr csargs nullPtr nullPtr 0
                  
+
 
 {- General algorithm: find out how many columns we have, check the type
 of each to see if it's NULL.  If it's not, fetch it as text and return that.
