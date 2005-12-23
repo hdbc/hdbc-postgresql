@@ -1,6 +1,6 @@
 Extra-Libraries: sqlite3
 Name: HDBC-sqlite3
-Version: 0.5.0
+Version: 0.6.0
 License: LGPL
 Maintainer: John Goerzen <jgoerzen@complete.org>
 Stability: Alpha
@@ -12,8 +12,8 @@ Other-Modules: Database.HDBC.Sqlite3.Connection,
  Database.HDBC.Sqlite3.Utils
 --Extensions: ExistentialQuantification, AllowOverlappingInstances,
 --    AllowUndecidableInstances, CPP
--- CPP extension is really only needed in FiniteMap.hs and Rfc2821.hs
+Extensions: ExistentialQuantification
 C-Sources: hdbc-sqlite3-helper.c
 Build-Depends: base, mtl, HDBC
-GHC-Options: -O2 -fglasgow-exts 
+GHC-Options: -O2
 CC-Options: -I. 
