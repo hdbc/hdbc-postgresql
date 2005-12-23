@@ -20,6 +20,8 @@ module Main where
 
 import Test.HUnit
 import Tests
+import TestUtils
 
-main = runTestTT tests
+main = do printDBInfo
+          runTestTT tests
 

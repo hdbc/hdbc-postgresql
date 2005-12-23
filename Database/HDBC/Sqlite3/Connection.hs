@@ -48,13 +48,19 @@ connectSqlite3 fp =
 mkConn :: FilePath -> Sqlite3 -> IO Connection
 mkConn fp obj =
     do begin_transaction obj
+       ver <- (sqlite3_libversion >>= peekCString)
        return $ Connection {
                             disconnect = fdisconnect obj,
                             commit = fcommit obj,
                             rollback = frollback obj,
                             run = frun obj,
                             prepare = newSth obj,
-                            clone = connectSqlite3 fp }
+                            clone = connectSqlite3 fp,
+                            hdbcDriverName = "sqlite3",
+                            hdbcClientVer = ver,
+                            proxiedClientName = "sqlite3",
+                            proxiedClientVer = ver,
+                            dbServerVer = ver}
 
 --------------------------------------------------
 -- Guts here
@@ -84,3 +90,6 @@ foreign import ccall unsafe "hdbc-sqlite3-helper.h &sqlite3_close_finalizer"
 
 foreign import ccall unsafe "hdbc-sqlite3-helper.h sqlite3_close_app"
   sqlite3_close :: Ptr CSqlite3 -> IO CInt
+
+foreign import ccall unsafe "sqlite3.h sqlite3_libversion"
+  sqlite3_libversion :: IO CString
