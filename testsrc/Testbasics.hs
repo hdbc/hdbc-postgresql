@@ -11,7 +11,7 @@ openClosedb = sqlTestCase $
 
 multiFinish = dbTestCase (\dbh ->
     do sth <- prepare dbh "SELECT 1 + 1"
-       sExecute sth []
+       execute sth []
        finish sth
        finish sth
        finish sth
@@ -19,117 +19,120 @@ multiFinish = dbTestCase (\dbh ->
 
 basicQueries = dbTestCase (\dbh ->
     do sth <- prepare dbh "SELECT 1 + 1"
-       sExecute sth []
-       sFetchRow sth >>= (assertEqual "row 1" (Just [Just "2"]))
-       sFetchRow sth >>= (assertEqual "last row" Nothing)
+       execute sth []
+       r <- fetchAllRows sth
+       assertEqual "converted from" [["2"]] (map (map fromSql) r)
+       assertEqual "int32 compare" [[SqlInt32 2]] r
+       assertEqual "iToSql compare" [[iToSql 2]] r
+       assertEqual "num compare" [[toSql (2::Int)]] r
+       assertEqual "nToSql compare" [[nToSql (2::Int)]] r
+       assertEqual "string compare" [[SqlString "2"]] r
                           )
     
 createTable = dbTestCase (\dbh ->
-    do sRun dbh "CREATE TABLE test1 (testname VARCHAR(20), testid INTEGER, testint INTEGER, testtext TEXT)" []
+    do run dbh "CREATE TABLE test1 (testname VARCHAR(20), testid INTEGER, testint INTEGER, testtext TEXT)" []
        commit dbh
                          )
 
 dropTable = dbTestCase (\dbh ->
-    do sRun dbh "DROP TABLE test1" []
+    do run dbh "DROP TABLE test1" []
        commit dbh
                        )
 
 runReplace = dbTestCase (\dbh ->
-    do sRun dbh "INSERT INTO test1 VALUES (?, ?, ?, ?)" r1
-       sRun dbh "INSERT INTO test1 VALUES (?, ?, 2, ?)" r2
+    do run dbh "INSERT INTO test1 VALUES (?, ?, ?, ?)" r1
+       run dbh "INSERT INTO test1 VALUES (?, ?, ?, ?)" r2
        commit dbh
        sth <- prepare dbh "SELECT * FROM test1 WHERE testname = 'runReplace' ORDER BY testid"
-       sExecute sth []
-       sFetchRow sth >>= (assertEqual "r1" (Just r1))
-       sFetchRow sth >>= (assertEqual "r2" (Just [Just "runReplace", Just "2",
-                                                 Just "2", Nothing]))
-       sFetchRow sth >>= (assertEqual "lastrow" Nothing)
+       execute sth []
+       r <- fetchAllRows sth
+       assertEqual "" [r1, r2] r
                        )
-    where r1 = [Just "runReplace", Just "1", Just "1234", Just "testdata"]
-          r2 = [Just "runReplace", Just "2", Nothing]
+    where r1 = [toSql "runReplace", iToSql 1, iToSql 1234, SqlString "testdata"] 
+          r2 = [toSql "runReplace", iToSql 2, iToSql 2, SqlNull]
 
 executeReplace = dbTestCase (\dbh ->
     do sth <- prepare dbh "INSERT INTO test1 VALUES ('executeReplace',?,?,?)"
-       sExecute sth [Just "1", Just "1234", Just "Foo"]
-       sExecute sth [Just "2", Nothing, Just "Bar"]
+       execute sth [iToSql 1, iToSql 1234, toSql "Foo"]
+       execute sth [SqlInt32 2, SqlNull, toSql "Bar"]
        commit dbh
        sth <- prepare dbh "SELECT * FROM test1 WHERE testname = ? ORDER BY testid"
-       sExecute sth [Just "executeReplace"]
-       sFetchRow sth >>= (assertEqual "r1" 
-                         (Just $ map Just ["executeReplace", "1", "1234", 
-                                           "Foo"]))
-       sFetchRow sth >>= (assertEqual "r2"
-                         (Just [Just "executeReplace", Just "2", Nothing,
-                                Just "Bar"]))
-       sFetchRow sth >>= (assertEqual "lastrow" Nothing)
+       execute sth [SqlString "executeReplace"]
+       r <- fetchAllRows sth
+       assertEqual "result"
+                   [[toSql "executeReplace", iToSql 1, toSql "1234",
+                     toSql "Foo"],
+                    [toSql "executeReplace", iToSql 2, SqlNull,
+                     toSql "Bar"]]
+                   r
                             )
 
 testExecuteMany = dbTestCase (\dbh ->
     do sth <- prepare dbh "INSERT INTO test1 VALUES ('multi',?,?,?)"
-       sExecuteMany sth rows
+       executeMany sth rows
        commit dbh
        sth <- prepare dbh "SELECT testid, testint, testtext FROM test1 WHERE testname = 'multi'"
-       sExecute sth []
-       mapM_ (\r -> sFetchRow sth >>= (assertEqual "" (Just r))) rows
-       sFetchRow sth >>= (assertEqual "lastrow" Nothing)
+       execute sth []
+       r <- fetchAllRows sth
+       assertEqual "" rows r
                           )
-    where rows = [map Just ["1", "1234", "foo"],
-                  map Just ["2", "1341", "bar"],
-                  [Just "3", Nothing, Nothing]]
+    where rows = [map toSql ["1", "1234", "foo"],
+                  map toSql ["2", "1341", "bar"],
+                  [toSql "3", SqlNull, SqlNull]]
 
-testsFetchAllRows = dbTestCase (\dbh ->
+testFetchAllRows = dbTestCase (\dbh ->
     do sth <- prepare dbh "INSERT INTO test1 VALUES ('sFetchAllRows', ?, NULL, NULL)"
-       sExecuteMany sth rows
+       executeMany sth rows
        commit dbh
        sth <- prepare dbh "SELECT testid FROM test1 WHERE testname = 'sFetchAllRows' ORDER BY testid"
-       sExecute sth []
-       results <- sFetchAllRows sth
+       execute sth []
+       results <- fetchAllRows sth
        assertEqual "" rows results
                                )
-    where rows = map (\x -> [Just . show $ x]) [1..9]
+    where rows = map (\x -> [iToSql x]) [1..9]
 
 basicTransactions = dbTestCase (\dbh ->
     do sth <- prepare dbh "INSERT INTO test1 VALUES ('basicTransactions', ?, NULL, NULL)"
-       sExecute sth [Just "0"]
+       execute sth [iToSql 0]
        commit dbh
        qrysth <- prepare dbh "SELECT testid FROM test1 WHERE testname = 'basicTransactions' ORDER BY testid"
-       sExecute qrysth []
-       sFetchAllRows qrysth >>= (assertEqual "initial commit" [[Just "0"]])
+       execute qrysth []
+       fetchAllRows qrysth >>= (assertEqual "initial commit" [[toSql "0"]])
 
        -- Now try a rollback
-       sExecuteMany sth rows
+       executeMany sth rows
        rollback dbh
-       sExecute qrysth []
-       sFetchAllRows qrysth >>= (assertEqual "rollback" [[Just "0"]])
+       execute qrysth []
+       fetchAllRows qrysth >>= (assertEqual "rollback" [[toSql "0"]])
 
        -- Now try another commit
-       sExecuteMany sth rows
+       executeMany sth rows
        commit dbh
-       sExecute qrysth []
-       sFetchAllRows qrysth >>= (assertEqual "final commit" ([Just "0"]:rows))
+       execute qrysth []
+       fetchAllRows qrysth >>= (assertEqual "final commit" ([SqlString "0"]:rows))
                                )
-    where rows = map (\x -> [Just . show $ x]) [1..9]
+    where rows = map (\x -> [iToSql $ x]) [1..9]
 
 testWithTransaction = dbTestCase (\dbh ->
     do sth <- prepare dbh "INSERT INTO test1 VALUES ('withTransaction', ?, NULL, NULL)"
-       sExecute sth [Just "0"]
+       execute sth [toSql "0"]
        commit dbh
        qrysth <- prepare dbh "SELECT testid FROM test1 WHERE testname = 'withTransaction' ORDER BY testid"
-       sExecute qrysth []
-       sFetchAllRows qrysth >>= (assertEqual "initial commit" [[Just "0"]])
+       execute qrysth []
+       fetchAllRows qrysth >>= (assertEqual "initial commit" [[toSql "0"]])
        
        -- Let's try a rollback.
-       try $ withTransaction dbh (\_ -> do sExecuteMany sth rows
+       try $ withTransaction dbh (\_ -> do executeMany sth rows
                                            fail "Foo")
-       sExecute qrysth []
-       sFetchAllRows qrysth >>= (assertEqual "rollback" [[Just "0"]])
+       execute qrysth []
+       fetchAllRows qrysth >>= (assertEqual "rollback" [[SqlString "0"]])
 
        -- And now a commit.
-       withTransaction dbh (\_ -> sExecuteMany sth rows)
-       sExecute qrysth []
-       sFetchAllRows qrysth >>= (assertEqual "final commit" ([Just "0"]:rows))
+       withTransaction dbh (\_ -> executeMany sth rows)
+       execute qrysth []
+       fetchAllRows qrysth >>= (assertEqual "final commit" ([iToSql 0]:rows))
                                )
-    where rows = map (\x -> [Just . show $ x]) [1..9]
+    where rows = map (\x -> [iToSql x]) [1..9]
        
 tests = TestList
         [
@@ -140,7 +143,7 @@ tests = TestList
          TestLabel "runReplace" runReplace,
          TestLabel "executeReplace" executeReplace,
          TestLabel "executeMany" testExecuteMany,
-         TestLabel "sFetchAllRows" testsFetchAllRows,
+         TestLabel "sFetchAllRows" testFetchAllRows,
          TestLabel "basicTransactions" basicTransactions,
          TestLabel "withTransaction" testWithTransaction,
          TestLabel "dropTable" dropTable
