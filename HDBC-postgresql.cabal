@@ -1,19 +1,19 @@
 Extra-Libraries: sqlite3
-Name: HDBC-sqlite3
+Name: HDBC-postgresql
 Version: 0.6.0
 License: LGPL
 Maintainer: John Goerzen <jgoerzen@complete.org>
 Stability: Alpha
 Copyright: Copyright (c) 2005 John Goerzen
-Exposed-Modules: Database.HDBC.Sqlite3
-Other-Modules: Database.HDBC.Sqlite3.Connection,
- Database.HDBC.Sqlite3.Statement,
- Database.HDBC.Sqlite3.Types,
- Database.HDBC.Sqlite3.Utils
+Exposed-Modules: Database.HDBC.PostgreSQL
+Other-Modules: Database.HDBC.PostgreSQL.Connection,
+ Database.HDBC.PostgreSQL.Statement,
+ Database.HDBC.PostgreSQL.Types,
+ Database.HDBC.PostgreSQL.Utils
 --Extensions: ExistentialQuantification, AllowOverlappingInstances,
 --    AllowUndecidableInstances, CPP
 Extensions: ExistentialQuantification
-C-Sources: hdbc-sqlite3-helper.c
+C-Sources: hdbc-postgresql-helper.c
 Build-Depends: base, mtl, HDBC
 GHC-Options: -O2
 CC-Options: -I. 
