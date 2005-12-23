@@ -46,8 +46,8 @@ runReplace = dbTestCase (\dbh ->
        run dbh "INSERT INTO test1 VALUES (?, ?, ?, ?)" r2
        commit dbh
        sth <- prepare dbh "SELECT * FROM test1 WHERE testname = 'runReplace' ORDER BY testid"
-       r2 <- execute sth []
-       assertEqual "select retval" (-1) r2
+       rv2 <- execute sth []
+       assertEqual "select retval" (-1) rv2
        r <- fetchAllRows sth
        assertEqual "" [r1, r2] r
                        )
