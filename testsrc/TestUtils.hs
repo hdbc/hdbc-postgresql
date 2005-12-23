@@ -1,12 +1,9 @@
-module TestUtils where
-import Database.HDBC.Sqlite3
+module TestUtils(connectDB, sqlTestCase, dbTestCase, printDBInfo) where
 import Database.HDBC
 import Test.HUnit
 import Control.Exception
+import SpecificDB(connectDB)
 
-connectDB = 
-    handleSqlError (connectSqlite3 "testtmp.sql3")
-    
 sqlTestCase a = 
     TestCase (handleSqlError a)
 
