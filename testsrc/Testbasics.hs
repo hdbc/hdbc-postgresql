@@ -11,7 +11,8 @@ openClosedb = sqlTestCase $
 
 multiFinish = dbTestCase (\dbh ->
     do sth <- prepare dbh "SELECT 1 + 1"
-       execute sth []
+       r <- execute sth []
+       assertEqual "basic count" (-1) r
        finish sth
        finish sth
        finish sth
@@ -40,11 +41,13 @@ dropTable = dbTestCase (\dbh ->
                        )
 
 runReplace = dbTestCase (\dbh ->
-    do run dbh "INSERT INTO test1 VALUES (?, ?, ?, ?)" r1
+    do r <- run dbh "INSERT INTO test1 VALUES (?, ?, ?, ?)" r1
+       assertEqual "insert retval" 1 r
        run dbh "INSERT INTO test1 VALUES (?, ?, ?, ?)" r2
        commit dbh
        sth <- prepare dbh "SELECT * FROM test1 WHERE testname = 'runReplace' ORDER BY testid"
-       execute sth []
+       r2 <- execute sth []
+       assertEqual "select retval" (-1) r2
        r <- fetchAllRows sth
        assertEqual "" [r1, r2] r
                        )
