@@ -37,7 +37,7 @@ import Control.Exception
 
 data SState = 
     SState { stomv :: MVar (Maybe Stmt),
-             nextrowmv :: MVar (Int), -- -1 for no next row (empty); otherwise, next row to read.
+             nextrowmv :: MVar (CInt), -- -1 for no next row (empty); otherwise, next row to read.
              dbo :: Conn,
              squery :: String}
 
@@ -79,10 +79,10 @@ fexecute sstate args = withForeignPtr (dbo sstate) $ \cconn ->
              do numrows <- pqntuples resptr
                 if numrows < 1
                    then do pqclear resptr
-                           return numrows
-                   else do fresptr <- newForeignPtr resptr pqclearptr
+                           return (fromIntegral numrows)
+                   else do fresptr <- newForeignPtr pqclearptr resptr
                            swapMVar (nextrowmv sstate) 0
-                           swapMVar (stomv sstate) fresptr
+                           swapMVar (stomv sstate) (Just fresptr)
                            return (-1)
          _ -> do csstatusmsg <- pqresStatus status
                  cserrormsg <- pqresultErrorMessage resptr
@@ -102,14 +102,17 @@ ffetchrow :: SState -> IO (Maybe [SqlValue])
 ffetchrow sstate = modifyMVar (nextrowmv sstate) dofetchrow
     where dofetchrow (-1) = return ((-1), Nothing)
           dofetchrow nextrow = withMVar (stomv sstate) $ \stmt -> 
-                               withStmt stmt $ \cstmt ->
-             do numrows <- pqntuples cstmt
-                if nextrow >= numrows
-                   then do public_ffinish sstate
-                           return ((-1), Nothing)
-                   else do ncols <- pqnfields cstmt
-                           res <- mapM (getCol nextrow cstmt) [0..(ncols - 1)]
-                           return (nextrow + 1, Just res)
+             case stmt of
+               Nothing -> return ((-1), Nothing)
+               Just cmstmt -> withStmt cmstmt $ \cstmt ->
+                 do numrows <- pqntuples cstmt
+                    if nextrow >= numrows
+                       then do public_ffinish sstate
+                               return ((-1), Nothing)
+                       else do ncols <- pqnfields cstmt
+                               res <- mapM (getCol cstmt nextrow) 
+                                      [0..(ncols - 1)]
+                               return (nextrow + 1, Just res)
           getCol p row icol = 
              do isnull <- pqgetisnull p row icol
                 if isnull /= 0
@@ -126,7 +129,9 @@ fexecutemany sstate arglist =
 -- Finish and change state
 public_ffinish sstate = 
     do swapMVar (nextrowmv sstate) (-1)
-       modifyMVar_ (stomv sstate) (\sth -> ffinish sth >> return Nothing)
+       modifyMVar_ (stomv sstate) worker
+    where worker Nothing = return Nothing
+          worker (Just sth) = ffinish sth >> return Nothing
 
 ffinish :: Stmt -> IO ()
 ffinish = finalizeForeignPtr
@@ -141,7 +146,7 @@ foreign import ccall unsafe "libpq-fe.h PQexecParams"
                   (Ptr CInt) ->
                   (Ptr CInt) ->
                   CInt ->
-                  Ptr CStmt
+                  IO (Ptr CStmt)
 
 foreign import ccall unsafe "libpq-fe.h &PQclear"
   pqclearptr :: FunPtr ((Ptr CStmt) -> IO ())
