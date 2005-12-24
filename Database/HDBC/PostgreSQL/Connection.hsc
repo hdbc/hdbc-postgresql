@@ -88,7 +88,7 @@ fcommit o = do frun o "COMMIT" []
 frollback o =  do frun o "ROLLBACK" []
                   begin_transaction o
 
-fdisconnect x = return () -- finalizeForeignPtr
+fdisconnect = finalizeForeignPtr
 
 foreign import ccall unsafe "libpq-fe.h PQconnectdb"
   pqconnectdb :: CString -> IO (Ptr CConn)
