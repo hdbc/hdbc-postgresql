@@ -36,7 +36,7 @@ import Control.Exception
 
 data SState = 
     SState { stomv :: MVar (Maybe Stmt),
-             nextrowmv :: MVar (Int),
+             nextrowmv :: MVar (Int), -- -1 for no next row (empty); otherwise, next row to read.
              dbo :: Conn,
              squery :: String}
 
@@ -45,7 +45,7 @@ data SState =
 newSth :: CConn -> String -> IO Statement               
 newSth indbo query = 
     do newstomv <- newMVar Nothing
-       newnextrowmv <- newMVar 0
+       newnextrowmv <- newMVar (-1)
        let sstate = SState {stomv = newstomv, nextrowmv = newnextrowmv,
                             dbo = indbo, squery = query}
        return $ Statement {execute = fexecute sstate query,
@@ -57,13 +57,40 @@ newSth indbo query =
 {- For now, we try to just  handle things as simply as possible.
 FIXME lots of room for improvement here (types, etc). -}
 fexecute sstate args = 
-    do public_ffinish sstate
-       
+    do public_ffinish sstate    -- Sets nextrowmv to -1
        resptr <- pqexecParams (dbo sstate) (squery sstate)
                  (genericLength args) nullPtr csargs nullPtr nullPtr 0
-                 
-
-
+       status <- pqresultStatus resptr
+       case status of
+         #{const PGRES_EMPTY_QUERY} ->
+             do pqclear resptr
+                return (-1)
+         #{const PGRES_COMMAND_OK} ->
+             do rowscs <- pqcmdTuples resptr
+                rows <- peekCString rowscs
+                pqclear resptr
+                return $ case rows of
+                                   "" -> (-1)
+                                   x -> read x
+         #{const PGRES_TUPLES_OK} -> 
+             do numrows <- pqntuples resptr
+                if numrows < 1
+                   then do pqclear resptr
+                           return numrows
+                   else do fresptr <- newForeignPtr resptr pqclearptr
+                           swapMVar (nextrowmv sstate) 0
+                           swapMVar (stomv sstate) fresptr
+                           return (-1)
+         _ -> do csstatusmsg <- pqresStatus status
+                 cserrormsg <- pqresultErrorMessage resptr
+                 statusmsg <- peekCString csstatusmsg
+                 errormsg <- peekCString cserrormsg
+                 pqclear resptr
+                 throwDyn $ 
+                          SqlError {seState = "",
+                                    seNativeError = fromIntegral status,
+                                    seErrorMsg = "execute: " ++ statusmsg ++
+                                                 ": " ++ errormsg}
 {- General algorithm: find out how many columns we have, check the type
 of each to see if it's NULL.  If it's not, fetch it as text and return that.
 
@@ -152,42 +179,35 @@ public_ffinish sstate = modifyMVar_ (stomv sstate) worker
     where worker (Empty) = return Empty
           worker (Prepared sto) = ffinish (dbo sstate) sto >> return Empty
           worker (Executed sto) = ffinish (dbo sstate) sto >> return Empty
-    
-ffinish dbo o = withRawStmt o (\p -> do r <- sqlite3_finalize p
-                                        checkError "finish" dbo r)
 
-foreign import ccall unsafe "hdbc-sqlite3-helper.h &sqlite3_finalize_finalizer"
-  sqlite3_finalizeptr :: FunPtr ((Ptr CStmt) -> IO ())
+ffinish :: Stmt -> IO ()
+ffinish = finalizeForeignPtr
 
-foreign import ccall unsafe "hdbc-sqlite3-helper.h sqlite3_finalize_app"
-  sqlite3_finalize :: (Ptr CStmt) -> IO CInt
+foreign import ccall unsafe "libpq-fe.h PQresultStatus"
+  pqresultStatus :: (Ptr CStmt) -> IO #{type ExecStatusType}
 
-foreign import ccall unsafe "hdbc-sqlite3-helper.h sqlite3_prepare2"
-  sqlite3_prepare :: (Ptr CSqlite3) -> CString -> CInt -> Ptr (Ptr CStmt) -> Ptr (Ptr CString) -> IO CInt
+foreign import ccall unsafe "libpq-fe.h PQexecParams"
+  pqexecParams :: (Ptr CConn) -> CString -> CInt ->
+                  (Ptr #{type Oid}) ->
+                  (Ptr CString) ->
+                  (Ptr CInt) ->
+                  (Ptr CInt) ->
+                  CInt ->
+                  Ptr CStmt
 
-foreign import ccall unsafe "sqlite3.h sqlite3_bind_parameter_count"
-  sqlite3_bind_parameter_count :: (Ptr CStmt) -> IO CInt
+foreign import ccall unsafe "libpq-fe.h &PQclear"
+  pqclearptr :: FunPtr ((Ptr CStmt) -> IO ())
 
-foreign import ccall unsafe "sqlite3.h sqlite3_step"
-  sqlite3_step :: (Ptr CStmt) -> IO CInt
+foreign import ccall unsafe "libpq-fe.h PQclear"
+  pqclear :: Ptr CStmt -> IO ()
 
-foreign import ccall unsafe "sqlite3.h sqlite3_reset"
-  sqlite3_reset :: (Ptr CStmt) -> IO CInt
+foreign import ccall unsafe "libpq-fe.h PQcmdTuples"
+  pqcmdTuples :: Ptr CStmt -> IO CString
+foreign import ccall unsafe "libpq-fe.h PQresStatus"
+  pqresStatus :: #{type ExecStatusType} -> IO CString
 
-foreign import ccall unsafe "sqlite3.h sqlite3_column_count"
-  sqlite3_column_count :: (Ptr CStmt) -> IO CInt
+foreign import ccall unsafe "libpq-fe.h PQresultErrorMessage"
+  pqresultErrorMessage :: (Ptr CStmt) -> IO CString
 
-foreign import ccall unsafe "sqlite3.h sqlite3_column_type"
-  sqlite3_column_type :: (Ptr CStmt) -> CInt -> IO CInt
-
-foreign import ccall unsafe "sqlite3.h sqlite3_column_text"
-  sqlite3_column_text :: (Ptr CStmt) -> CInt -> IO CString
-
-foreign import ccall unsafe "sqlite3.h sqlite3_column_bytes"
-  sqlite3_column_bytes :: (Ptr CStmt) -> CInt -> IO CInt
-
-foreign import ccall unsafe "hdbc-sqlite3-helper.h sqlite3_bind_text2"
-  sqlite3_bind_text2 :: (Ptr CStmt) -> CInt -> CString -> CInt -> IO CInt
-
-foreign import ccall unsafe "sqlite3.h sqlite3_bind_null"
-  sqlite3_bind_null :: (Ptr CStmt) -> CInt -> IO CInt
+foreign import ccall unsafe "libpq-fe.h PQntuples"
+  pqntuples :: Ptr CStmt -> IO CInt
