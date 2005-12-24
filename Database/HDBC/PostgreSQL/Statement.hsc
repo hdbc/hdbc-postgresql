@@ -33,6 +33,7 @@ import Data.List
 import Data.Word
 import Control.Exception
 import System.IO
+import Database.HDBC.PostgreSQL.Parser(convertSQL)
 
 l m = return () -- hPutStrLn stderr ("\n" ++ m)
 
@@ -51,8 +52,15 @@ newSth indbo query =
     do l "in newSth"
        newstomv <- newMVar Nothing
        newnextrowmv <- newMVar (-1)
+       usequery <- case convertSQL query of
+                      Left errstr -> throwDyn $ SqlError
+                                      {seState = "",
+                                       seNativeError = (-1),
+                                       seErrorMsg = "hdbc prepare: " ++ 
+                                                    show errstr}
+                      Right converted -> return converted
        let sstate = SState {stomv = newstomv, nextrowmv = newnextrowmv,
-                            dbo = indbo, squery = query}
+                            dbo = indbo, squery = usequery}
        return $ Statement {execute = fexecute sstate,
                            executeMany = fexecutemany sstate,
                            finish = public_ffinish sstate,
