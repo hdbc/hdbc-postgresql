@@ -44,8 +44,14 @@ withConn = withForeignPtr
 withStmt :: Stmt -> (Ptr CStmt -> IO b) -> IO b
 withStmt = withForeignPtr
 
-withCStringArr0 :: [String] -> (Ptr CString -> IO a) -> IO a
-withCStringArr0 inp action = withAnyArr0 newCString free inp action
+withCStringArr0 :: [SqlValue] -> (Ptr CString -> IO a) -> IO a
+withCStringArr0 inp action = withAnyArr0 convfunc freefunc inp action
+    where convfunc SqlNull = return nullPtr
+          convfunc x = newCString (fromSql x)
+          freefunc x =
+              if x == nullPtr
+                 then return ()
+                 else free x
 
 withAnyArr0 :: (a -> IO (Ptr b)) -- ^ Function that transforms input data into pointer
             -> (Ptr b -> IO ())  -- ^ Function that frees generated data

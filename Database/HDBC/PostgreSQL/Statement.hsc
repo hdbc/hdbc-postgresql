@@ -71,7 +71,7 @@ newSth indbo query =
 FIXME lots of room for improvement here (types, etc). -}
 fexecute sstate args = withForeignPtr (dbo sstate) $ \cconn ->
                        withCString (squery sstate) $ \cquery ->
-                       withCStringArr0 (map fromSql args) $ \cargs ->
+                       withCStringArr0 args $ \cargs ->
     do l "in fexecute"
        public_ffinish sstate    -- Sets nextrowmv to -1
        resptr <- pqexecParams cconn cquery
