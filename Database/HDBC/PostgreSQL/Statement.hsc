@@ -34,7 +34,7 @@ import Data.Word
 import Control.Exception
 import System.IO
 
-l m = hPutStrLn stderr ("\n" ++ m)
+l m = return () -- hPutStrLn stderr ("\n" ++ m)
 
 #include <libpq-fe.h>
 
@@ -106,9 +106,9 @@ of each to see if it's NULL.  If it's not, fetch it as text and return that.
 ffetchrow :: SState -> IO (Maybe [SqlValue])
 ffetchrow sstate = modifyMVar (nextrowmv sstate) dofetchrow
     where dofetchrow (-1) = l "ffr -1" >> return ((-1), Nothing)
-          dofetchrow nextrow = withMVar (stomv sstate) $ \stmt -> 
+          dofetchrow nextrow = modifyMVar (stomv sstate) $ \stmt -> 
              case stmt of
-               Nothing -> l "ffr nos" >> return ((-1), Nothing)
+               Nothing -> l "ffr nos" >> return (stmt, ((-1), Nothing))
                Just cmstmt -> withStmt cmstmt $ \cstmt ->
                  do l $ "ffetchrow: " ++ show nextrow
                     numrows <- pqntuples cstmt
@@ -116,14 +116,13 @@ ffetchrow sstate = modifyMVar (nextrowmv sstate) dofetchrow
                     if nextrow >= numrows
                        then do l "no more rows"
                                -- Don't use public_ffinish here
-                               --swapMVar (stomv sstate) Nothing
                                ffinish cmstmt
-                               return ((-1), Nothing)
+                               return (Nothing, ((-1), Nothing))
                        else do l "getting stuff"
                                ncols <- pqnfields cstmt
                                res <- mapM (getCol cstmt nextrow) 
                                       [0..(ncols - 1)]
-                               return (nextrow + 1, Just res)
+                               return (stmt, (nextrow + 1, Just res))
           getCol p row icol = 
              do isnull <- pqgetisnull p row icol
                 if isnull /= 0
