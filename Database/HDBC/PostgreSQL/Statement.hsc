@@ -112,10 +112,15 @@ ffetchrow sstate = modifyMVar (nextrowmv sstate) dofetchrow
                Just cmstmt -> withStmt cmstmt $ \cstmt ->
                  do l $ "ffetchrow: " ++ show nextrow
                     numrows <- pqntuples cstmt
+                    l $ "numrows: " ++ show numrows
                     if nextrow >= numrows
-                       then do public_ffinish sstate
+                       then do l "no more rows"
+                               -- Don't use public_ffinish here
+                               --swapMVar (stomv sstate) Nothing
+                               ffinish cmstmt
                                return ((-1), Nothing)
-                       else do ncols <- pqnfields cstmt
+                       else do l "getting stuff"
+                               ncols <- pqnfields cstmt
                                res <- mapM (getCol cstmt nextrow) 
                                       [0..(ncols - 1)]
                                return (nextrow + 1, Just res)
