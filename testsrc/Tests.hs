@@ -20,9 +20,11 @@ module Tests(tests) where
 import Test.HUnit
 import qualified Testbasics
 import qualified TestSbasics
+import qualified SpecificDB
 
 test1 = TestCase ("x" @=? "x")
 
 tests = TestList [TestLabel "test1" test1,
                   TestLabel "String basics" TestSbasics.tests,
-                  TestLabel "SqlValue basics" Testbasics.tests]
+                  TestLabel "SqlValue basics" Testbasics.tests,
+                  TestLabel "SpecificDB" SpecificDB.tests]
