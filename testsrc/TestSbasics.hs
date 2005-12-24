@@ -5,8 +5,6 @@ import TestUtils
 import System.IO
 import Control.Exception
 
-l m = hPutStrLn stderr $ "\n" ++ m
-
 openClosedb = sqlTestCase $ 
     do dbh <- connectDB
        disconnect dbh
@@ -20,19 +18,10 @@ multiFinish = dbTestCase (\dbh ->
                           )
 
 basicQueries = dbTestCase (\dbh ->
-    do l "bqe"
-       sth <- prepare dbh "SELECT 1 + 1"
-       l "prepared"
+    do sth <- prepare dbh "SELECT 1 + 1"
        sExecute sth []
-       l "executed"
-       r1 <- sFetchRow sth 
-       l "row1 fetched"
-       (assertEqual "row 1" (Just [Just "2"]) r1)
-       l "asserted"
-       r2 <- sFetchRow sth
-       l "row2 fetched"
-       (assertEqual "last row" Nothing r2)
-       l "asserted"
+       sFetchRow sth >>= (assertEqual "row 1" (Just [Just "2"]))
+       sFetchRow sth >>= (assertEqual "last row" Nothing)
                           )
     
 createTable = dbTestCase (\dbh ->
@@ -147,7 +136,7 @@ tests = TestList
          TestLabel "openClosedb" openClosedb,
          TestLabel "multiFinish" multiFinish,
          TestLabel "basicQueries" basicQueries,
-         --TestLabel "createTable" createTable,
+         TestLabel "createTable" createTable,
          TestLabel "runReplace" runReplace,
          TestLabel "executeReplace" executeReplace,
          TestLabel "executeMany" testExecuteMany,
