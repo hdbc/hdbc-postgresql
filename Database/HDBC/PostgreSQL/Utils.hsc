@@ -26,9 +26,11 @@ import Database.HDBC.PostgreSQL.Types
 import Foreign.C.Types
 import Control.Exception
 import Foreign.Storable
+import Foreign.Marshal.Array
+import Foreign.Marshal.Alloc
 
 raiseError :: String -> CInt -> (Ptr CConn) -> IO a
-raiseError msg cconn code =
+raiseError msg code cconn =
     do rc <- pqerrorMessage cconn
        str <- peekCString rc
        throwDyn $ SqlError {seState = "",
@@ -41,5 +43,19 @@ withCConn = withForeignPtr
 withStmt :: Stmt -> (Ptr CStmt -> IO b) -> IO b
 withStmt = withForeignPtr
 
+withCStringArr0 :: [String] -> (Ptr CString -> IO a) -> IO a
+withCStringArr0 inp action = withAnyArr0 newCString free inp action
+
+withAnyArr0 :: (a -> IO (Ptr b)) -- ^ Function that transforms input data into pointer
+            -> (Ptr b -> IO ())  -- ^ Function that frees generated data
+            -> [a]               -- ^ List of input data
+            -> (Ptr (Ptr b) -> IO c) -- ^ Action to run with the C array
+            -> IO c             -- ^ Return value
+withAnyArr0 input2ptract freeact inp action =
+    bracket (mapM input2ptract inp)
+            (\clist -> mapM_ freeact clist)
+            (\clist -> withArray0 nullPtr clist action)
+
 foreign import ccall unsafe "libpq-fe.h PQerrorMessage"
   pqerrorMessage :: Ptr CConn -> IO CString
+

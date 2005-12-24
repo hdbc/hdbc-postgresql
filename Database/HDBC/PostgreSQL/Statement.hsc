@@ -30,6 +30,7 @@ import Foreign.Marshal
 import Foreign.Storable
 import Control.Monad
 import Data.List
+import Data.Word
 import Control.Exception
 
 #include <libpq-fe.h>
@@ -42,24 +43,26 @@ data SState =
 
 -- FIXME: we currently do no prepare optimization whatsoever.
 
-newSth :: CConn -> String -> IO Statement               
+newSth :: Conn -> String -> IO Statement               
 newSth indbo query = 
     do newstomv <- newMVar Nothing
        newnextrowmv <- newMVar (-1)
        let sstate = SState {stomv = newstomv, nextrowmv = newnextrowmv,
                             dbo = indbo, squery = query}
-       return $ Statement {execute = fexecute sstate query,
-                           executeMany = fexecutemany sstate query,
+       return $ Statement {execute = fexecute sstate,
+                           executeMany = fexecutemany sstate,
                            finish = public_ffinish sstate,
                            fetchRow = ffetchrow sstate,
                            originalQuery = query}
 
 {- For now, we try to just  handle things as simply as possible.
 FIXME lots of room for improvement here (types, etc). -}
-fexecute sstate args = 
+fexecute sstate args = withForeignPtr (dbo sstate) $ \cconn ->
+                       withCString (squery sstate) $ \cquery ->
+                       withCStringArr0 (map fromSql args) $ \cargs ->
     do public_ffinish sstate    -- Sets nextrowmv to -1
-       resptr <- pqexecParams (dbo sstate) (squery sstate)
-                 (genericLength args) nullPtr csargs nullPtr nullPtr 0
+       resptr <- pqexecParams cconn cquery
+                 (genericLength args) nullPtr cargs nullPtr nullPtr 0
        status <- pqresultStatus resptr
        case status of
          #{const PGRES_EMPTY_QUERY} ->
@@ -116,6 +119,7 @@ ffetchrow sstate = modifyMVar (nextrowmv sstate) dofetchrow
                            return (SqlString s)
 
 -- FIXME: needs a faster algorithm.
+fexecutemany :: SState -> [[SqlValue]] -> IO ()
 fexecutemany sstate arglist =
     mapM_ (fexecute sstate) arglist >> return ()
 
