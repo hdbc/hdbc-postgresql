@@ -1,6 +1,6 @@
 module SpecificDB where
 import Database.HDBC
-import Database.HDBC.Sqlite3
+import Database.HDBC.PostgreSQL
 connectDB = 
-    handleSqlError (connectSqlite3 "testtmp.sql3")
+    handleSqlError (connectPostgreSQL "")
 
