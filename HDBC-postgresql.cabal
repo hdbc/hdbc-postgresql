@@ -14,5 +14,5 @@ Other-Modules: Database.HDBC.PostgreSQL.Connection,
 --    AllowUndecidableInstances, CPP
 Extensions: ExistentialQuantification
 Build-Depends: base, mtl, HDBC
-GHC-Options: -O2
+GHC-Options: -O2 -optc -ggdb3
 CC-Options: -I. -I/usr/include/postgresql

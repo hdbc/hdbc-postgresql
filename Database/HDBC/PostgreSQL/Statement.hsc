@@ -32,6 +32,9 @@ import Control.Monad
 import Data.List
 import Data.Word
 import Control.Exception
+import System.IO
+
+l m = hPutStrLn stderr ("\n" ++ m)
 
 #include <libpq-fe.h>
 
@@ -45,7 +48,8 @@ data SState =
 
 newSth :: Conn -> String -> IO Statement               
 newSth indbo query = 
-    do newstomv <- newMVar Nothing
+    do l "in newSth"
+       newstomv <- newMVar Nothing
        newnextrowmv <- newMVar (-1)
        let sstate = SState {stomv = newstomv, nextrowmv = newnextrowmv,
                             dbo = indbo, squery = query}
@@ -60,7 +64,8 @@ FIXME lots of room for improvement here (types, etc). -}
 fexecute sstate args = withForeignPtr (dbo sstate) $ \cconn ->
                        withCString (squery sstate) $ \cquery ->
                        withCStringArr0 (map fromSql args) $ \cargs ->
-    do public_ffinish sstate    -- Sets nextrowmv to -1
+    do l "in fexecute"
+       public_ffinish sstate    -- Sets nextrowmv to -1
        resptr <- pqexecParams cconn cquery
                  (genericLength args) nullPtr cargs nullPtr nullPtr 0
        status <- pqresultStatus resptr
@@ -100,12 +105,13 @@ of each to see if it's NULL.  If it's not, fetch it as text and return that.
 
 ffetchrow :: SState -> IO (Maybe [SqlValue])
 ffetchrow sstate = modifyMVar (nextrowmv sstate) dofetchrow
-    where dofetchrow (-1) = return ((-1), Nothing)
+    where dofetchrow (-1) = l "ffr -1" >> return ((-1), Nothing)
           dofetchrow nextrow = withMVar (stomv sstate) $ \stmt -> 
              case stmt of
-               Nothing -> return ((-1), Nothing)
+               Nothing -> l "ffr nos" >> return ((-1), Nothing)
                Just cmstmt -> withStmt cmstmt $ \cstmt ->
-                 do numrows <- pqntuples cstmt
+                 do l $ "ffetchrow: " ++ show nextrow
+                    numrows <- pqntuples cstmt
                     if nextrow >= numrows
                        then do public_ffinish sstate
                                return ((-1), Nothing)
@@ -128,13 +134,14 @@ fexecutemany sstate arglist =
 
 -- Finish and change state
 public_ffinish sstate = 
-    do swapMVar (nextrowmv sstate) (-1)
+    do l "public_ffinish"
+       swapMVar (nextrowmv sstate) (-1)
        modifyMVar_ (stomv sstate) worker
     where worker Nothing = return Nothing
           worker (Just sth) = ffinish sth >> return Nothing
 
 ffinish :: Stmt -> IO ()
-ffinish = finalizeForeignPtr
+ffinish p = l "ffinish" >> finalizeForeignPtr p
 
 foreign import ccall unsafe "libpq-fe.h PQresultStatus"
   pqresultStatus :: (Ptr CStmt) -> IO #{type ExecStatusType}

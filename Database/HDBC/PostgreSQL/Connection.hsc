@@ -42,13 +42,12 @@ of the connection string. -}
 connectPostgreSQL :: String -> IO Connection
 connectPostgreSQL args = withCString args $
   \cs -> do ptr <- pqconnectdb cs
+            status <- pqstatus ptr
             fptr <- newForeignPtr pqfinishptr ptr
-            withConn fptr (\p ->
-               do status <- pqstatus p
-                  case status of
+            case status of
                      #{const CONNECTION_OK} -> mkConn args fptr
-                     _ -> raiseError "connectPostgreSQL" status p
-                                    )
+                     _ -> raiseError "connectPostgreSQL" status ptr
+
 -- FIXME: environment may have changed, should use pgsql enquiries
 -- for clone.
 mkConn :: String -> Conn -> IO Connection
@@ -88,7 +87,8 @@ fcommit o = do frun o "COMMIT" []
                begin_transaction o
 frollback o =  do frun o "ROLLBACK" []
                   begin_transaction o
-fdisconnect o = finalizeForeignPtr o
+
+fdisconnect x = return () -- finalizeForeignPtr
 
 foreign import ccall unsafe "libpq-fe.h PQconnectdb"
   pqconnectdb :: CString -> IO (Ptr CConn)
