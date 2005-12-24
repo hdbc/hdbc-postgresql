@@ -115,46 +115,14 @@ ffetchrow sstate = modifyMVar (nextrowmv sstate) dofetchrow
                            s <- peekCString text
                            return (SqlString s)
 
-fexecute sstate args = modifyMVar (stomv sstate) doexecute
-    where doexecute (Executed sto) = ffinish (dbo sstate) sto >> doexecute Empty
-          doexecute Empty =     -- already cleaned up from last time
-              do sto <- fprepare sstate
-                 doexecute (Prepared sto)
-          doexecute (Prepared sto) = withStmt sto (\p -> 
-              do c <- sqlite3_bind_parameter_count p
-                 when (c /= genericLength args)
-                   (throwDyn $ SqlError {seState = "",
-                                         seNativeError = (-1),
-                                         seErrorMsg = "In HDBC execute, received " ++ (show args) ++ " but expected " ++ (show c) ++ " args."})
-                 sqlite3_reset p >>= checkError "execute (reset)" (dbo sstate)
-                 zipWithM_ (bindArgs p) [1..c] args
-                 r <- fstep (dbo sstate) p
-                 if r
-                    then return (Executed sto, (-1))
-                    else do ffinish (dbo sstate) sto
-                            return (Empty, 0)
-                                                        )
-          bindArgs p i SqlNull =
-              sqlite3_bind_null p i >>= 
-                checkError ("execute (binding NULL column " ++ (show i) ++ ")")
-                           (dbo sstate)
-          bindArgs p i arg = withCStringLen (fromSql arg) 
-             (\(cs, len) -> do r <- sqlite3_bind_text2 p i cs 
-                                    (fromIntegral len)
-                               checkError ("execute (binding column " ++ 
-                                           (show i) ++ ")") (dbo sstate) r
-             )
-
 -- FIXME: needs a faster algorithm.
 fexecutemany sstate arglist =
-    mapM (fexecute sstate) arglist >>= return . genericLength
+    mapM_ (fexecute sstate) arglist >> return ()
 
---ffinish o = withForeignPtr o (\p -> sqlite3_finalize p >>= checkError "finish")
 -- Finish and change state
-public_ffinish sstate = modifyMVar_ (stomv sstate) worker
-    where worker (Empty) = return Empty
-          worker (Prepared sto) = ffinish (dbo sstate) sto >> return Empty
-          worker (Executed sto) = ffinish (dbo sstate) sto >> return Empty
+public_ffinish sstate = 
+    do swapMVar (nextrowmv sstate) (-1)
+       modifyMVar_ (stomv sstate) (\sth -> ffinish sth >> return Nothing)
 
 ffinish :: Stmt -> IO ()
 ffinish = finalizeForeignPtr
