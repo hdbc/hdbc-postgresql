@@ -1,9 +1,6 @@
-Add a explicit close operation (don't call unbind twice)
-
 handle NULLs in strings (may be done)
 
-types
-
-keep a list of open statements so they can be closed on a call to close.
-
 optimize multiple executions and executeMany
+
+Need a query parser to replace question marks
+
