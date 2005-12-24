@@ -93,51 +93,27 @@ fexecute sstate args =
                                                  ": " ++ errormsg}
 {- General algorithm: find out how many columns we have, check the type
 of each to see if it's NULL.  If it's not, fetch it as text and return that.
+-}
 
-Note that execute() will have already loaded up the first row -- and we
-do that each time.  so this function returns the row that is already in sqlite,
-then loads the next row. -}
 ffetchrow :: SState -> IO (Maybe [SqlValue])
-ffetchrow sstate = modifyMVar (stomv sstate) dofetchrow
-    where dofetchrow Empty = return (Empty, Nothing)
-          dofetchrow (Prepared _) = 
-              throwDyn $ SqlError {seState = "HDBC Sqlite3 fetchrow",
-                                   seNativeError = 0,
-                                   seErrorMsg = "Attempt to fetch row from Statement that has not been executed.  Query was: " ++ (query sstate)}
-          dofetchrow (Executed sto) = withStmt sto (\p ->
-              do ccount <- sqlite3_column_count p
-                 -- fetch the data
-                 res <- mapM (getCol p) [0..(ccount - 1)]
-                 r <- fstep (dbo sstate) p
-                 if r
-                    then return (Executed sto, Just res)
-                    else do ffinish (dbo sstate) sto
-                            return (Empty, Just res)
-                                                         )
- 
-          getCol p icol = 
-             do t <- sqlite3_column_type p icol
-                if t == #{const SQLITE_NULL}
+ffetchrow sstate = modifyMVar (nextrowmv sstate) dofetchrow
+    where dofetchrow (-1) = return ((-1), Nothing)
+          dofetchrow nextrow = withMVar (stomv sstate) $ \stmt -> 
+                               withStmt stmt $ \cstmt ->
+             do numrows <- pqntuples cstmt
+                if nextrow >= numrows
+                   then do public_ffinish sstate
+                           return ((-1), Nothing)
+                   else do ncols <- pqnfields cstmt
+                           res <- mapM (getCol nextrow cstmt) [0..(ncols - 1)]
+                           return (nextrow + 1, Just res)
+          getCol p row icol = 
+             do isnull <- pqgetisnull p row icol
+                if isnull /= 0
                    then return SqlNull
-                   else do text <- sqlite3_column_text p icol
-                           len <- sqlite3_column_bytes p icol
-                           s <- peekCStringLen (text, fromIntegral len)
+                   else do text <- pqgetvalue p row icol
+                           s <- peekCString text
                            return (SqlString s)
-
-fstep :: Sqlite3 -> Ptr CStmt -> IO Bool
-fstep dbo p =
-    do r <- sqlite3_step p
-       case r of
-         #{const SQLITE_ROW} -> return True
-         #{const SQLITE_DONE} -> return False
-         #{const SQLITE_ERROR} -> checkError "step" dbo #{const SQLITE_ERROR}
-                                   >> (throwDyn $ SqlError 
-                                          {seState = "",
-                                           seNativeError = 0,
-                                           seErrorMsg = "In HDBC step, internal processing error (got SQLITE_ERROR with no error)"})
-         x -> throwDyn $ SqlError {seState = "",
-                                   seNativeError = fromIntegral x,
-                                   seErrorMsg = "In HDBC step, unexpected result from sqlite3_step"}
 
 fexecute sstate args = modifyMVar (stomv sstate) doexecute
     where doexecute (Executed sto) = ffinish (dbo sstate) sto >> doexecute Empty
@@ -211,3 +187,12 @@ foreign import ccall unsafe "libpq-fe.h PQresultErrorMessage"
 
 foreign import ccall unsafe "libpq-fe.h PQntuples"
   pqntuples :: Ptr CStmt -> IO CInt
+
+foreign import ccall unsafe "libpq-fe.h PQnfields"
+  pqnfields :: Ptr CStmt -> IO CInt
+
+foreign import ccall unsafe "libpq-fe.h PQgetisnull"
+  pqgetisnull :: Ptr CStmt -> CInt -> CInt -> IO CInt
+
+foreign import ccall unsafe "libpq-fe.h PQgetvalue"
+  pqgetvalue :: Ptr CStmt -> CInt -> CInt -> IO CString
