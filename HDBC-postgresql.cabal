@@ -1,4 +1,4 @@
-Extra-Libraries: sqlite3
+Extra-Libraries: pq
 Name: HDBC-postgresql
 Version: 0.6.0
 License: LGPL
@@ -13,7 +13,6 @@ Other-Modules: Database.HDBC.PostgreSQL.Connection,
 --Extensions: ExistentialQuantification, AllowOverlappingInstances,
 --    AllowUndecidableInstances, CPP
 Extensions: ExistentialQuantification
-C-Sources: hdbc-postgresql-helper.c
 Build-Depends: base, mtl, HDBC
 GHC-Options: -O2
 CC-Options: -I. -I/usr/include/postgresql

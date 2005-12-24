@@ -30,6 +30,7 @@ import Foreign.Storable
 import Database.HDBC.PostgreSQL.Utils
 import Foreign.ForeignPtr
 import Foreign.Ptr
+import Data.Word
 
 #include <libpq-fe.h>
 #include <pg_config.h>
@@ -42,27 +43,27 @@ connectPostgreSQL :: String -> IO Connection
 connectPostgreSQL args = withCString args $
   \cs -> do ptr <- pqconnectdb cs
             fptr <- newForeignPtr pqfinishptr ptr
-            withForeignPointer fptr (\p ->
+            withConn fptr (\p ->
                do status <- pqstatus p
                   case status of
                      #{const CONNECTION_OK} -> mkConn args fptr
-                     _ -> raiseError "connectPostgreSQL" p status
+                     _ -> raiseError "connectPostgreSQL" status p
                                     )
 -- FIXME: environment may have changed, should use pgsql enquiries
 -- for clone.
-mkConn :: String -> CConn -> IO Connection
-mkConn args conn = withConn obj $
+mkConn :: String -> Conn -> IO Connection
+mkConn args conn = withConn conn $
   \cconn -> 
-    do begin_transaction obj
+    do begin_transaction conn
        protover <- pqprotocolVersion cconn
        serverver <- pqserverVersion cconn
        let clientver = #{const_str PG_VERSION}
        return $ Connection {
-                            disconnect = fdisconnect obj,
-                            commit = fcommit obj,
-                            rollback = frollback obj,
-                            run = frun obj,
-                            prepare = newSth obj,
+                            disconnect = fdisconnect conn,
+                            commit = fcommit conn,
+                            rollback = frollback conn,
+                            run = frun conn,
+                            prepare = newSth conn,
                             clone = connectPostgreSQL args,
                             hdbcDriverName = "postgresql",
                             hdbcClientVer = clientver,
@@ -74,7 +75,7 @@ mkConn args conn = withConn obj $
 -- Guts here
 --------------------------------------------------
 
-begin_transaction :: Sqlite3 -> IO ()
+begin_transaction :: Conn -> IO ()
 begin_transaction o = frun o "BEGIN" [] >> return ()
 
 frun o query args =
@@ -90,7 +91,7 @@ frollback o =  do frun o "ROLLBACK" []
 fdisconnect o = finalizeForeignPtr o
 
 foreign import ccall unsafe "libpq-fe.h PQconnectdb"
-  pqconnectdb :: CString -> Ptr CConn
+  pqconnectdb :: CString -> IO (Ptr CConn)
 
 foreign import ccall unsafe "libpq-fe.h PQstatus"
   pqstatus :: Ptr CConn -> IO #{type ConnStatusType}

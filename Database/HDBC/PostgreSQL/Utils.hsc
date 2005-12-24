@@ -28,8 +28,9 @@ import Control.Exception
 import Foreign.Storable
 import Foreign.Marshal.Array
 import Foreign.Marshal.Alloc
+import Data.Word
 
-raiseError :: String -> CInt -> (Ptr CConn) -> IO a
+raiseError :: String -> Word32 -> (Ptr CConn) -> IO a
 raiseError msg code cconn =
     do rc <- pqerrorMessage cconn
        str <- peekCString rc
@@ -37,8 +38,8 @@ raiseError msg code cconn =
                             seNativeError = fromIntegral code,
                             seErrorMsg = msg ++ ": " ++ str}
 
-withCConn :: Conn -> (Ptr CConn -> IO b) -> IO b
-withCConn = withForeignPtr
+withConn :: Conn -> (Ptr CConn -> IO b) -> IO b
+withConn = withForeignPtr
 
 withStmt :: Stmt -> (Ptr CStmt -> IO b) -> IO b
 withStmt = withForeignPtr

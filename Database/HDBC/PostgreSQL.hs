@@ -33,7 +33,7 @@ Written by John Goerzen, jgoerzen\@complete.org
 
 module Database.HDBC.PostgreSQL
     (
-     connectSqlite3
+     connectPostgreSQL
     )
 
 where
