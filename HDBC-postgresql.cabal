@@ -9,7 +9,8 @@ Exposed-Modules: Database.HDBC.PostgreSQL
 Other-Modules: Database.HDBC.PostgreSQL.Connection,
  Database.HDBC.PostgreSQL.Statement,
  Database.HDBC.PostgreSQL.Types,
- Database.HDBC.PostgreSQL.Utils
+ Database.HDBC.PostgreSQL.Utils,
+ Database.HDBC.PostgreSQL.Parser
 --Extensions: ExistentialQuantification, AllowOverlappingInstances,
 --    AllowUndecidableInstances, CPP
 Extensions: ExistentialQuantification
