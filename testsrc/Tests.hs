@@ -21,10 +21,12 @@ import Test.HUnit
 import qualified Testbasics
 import qualified TestSbasics
 import qualified SpecificDB
+import qualified TestMisc
 
 test1 = TestCase ("x" @=? "x")
 
 tests = TestList [TestLabel "test1" test1,
                   TestLabel "String basics" TestSbasics.tests,
                   TestLabel "SqlValue basics" Testbasics.tests,
-                  TestLabel "SpecificDB" SpecificDB.tests]
+                  TestLabel "SpecificDB" SpecificDB.tests,
+                  TestLabel "Misc tests" TestMisc.tests]
