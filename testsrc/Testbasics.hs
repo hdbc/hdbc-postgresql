@@ -31,24 +31,24 @@ basicQueries = dbTestCase (\dbh ->
                           )
     
 createTable = dbTestCase (\dbh ->
-    do run dbh "CREATE TABLE test1 (testname VARCHAR(20), testid INTEGER, testint INTEGER, testtext TEXT)" []
+    do run dbh "CREATE TABLE hdbctest1 (testname VARCHAR(20), testid INTEGER, testint INTEGER, testtext TEXT)" []
        commit dbh
                          )
 
 dropTable = dbTestCase (\dbh ->
-    do run dbh "DROP TABLE test1" []
+    do run dbh "DROP TABLE hdbctest1" []
        commit dbh
                        )
 
 runReplace = dbTestCase (\dbh ->
-    do r <- run dbh "INSERT INTO test1 VALUES (?, ?, ?, ?)" r1
+    do r <- run dbh "INSERT INTO hdbctest1 VALUES (?, ?, ?, ?)" r1
        case hdbcDriverName dbh of
           "sqlite3" -> -- No support for number of rows modified in sqlite3
                        assertEqual "insert retval" (-1) r
           _ -> assertEqual "insert retval" 1 r
-       run dbh "INSERT INTO test1 VALUES (?, ?, ?, ?)" r2
+       run dbh "INSERT INTO hdbctest1 VALUES (?, ?, ?, ?)" r2
        commit dbh
-       sth <- prepare dbh "SELECT * FROM test1 WHERE testname = 'runReplace' ORDER BY testid"
+       sth <- prepare dbh "SELECT * FROM hdbctest1 WHERE testname = 'runReplace' ORDER BY testid"
        rv2 <- execute sth []
        assertEqual "select retval" (-1) rv2
        r <- fetchAllRows sth
@@ -58,11 +58,11 @@ runReplace = dbTestCase (\dbh ->
           r2 = [toSql "runReplace", iToSql 2, iToSql 2, SqlNull]
 
 executeReplace = dbTestCase (\dbh ->
-    do sth <- prepare dbh "INSERT INTO test1 VALUES ('executeReplace',?,?,?)"
+    do sth <- prepare dbh "INSERT INTO hdbctest1 VALUES ('executeReplace',?,?,?)"
        execute sth [iToSql 1, iToSql 1234, toSql "Foo"]
        execute sth [SqlInt32 2, SqlNull, toSql "Bar"]
        commit dbh
-       sth <- prepare dbh "SELECT * FROM test1 WHERE testname = ? ORDER BY testid"
+       sth <- prepare dbh "SELECT * FROM hdbctest1 WHERE testname = ? ORDER BY testid"
        execute sth [SqlString "executeReplace"]
        r <- fetchAllRows sth
        assertEqual "result"
@@ -74,10 +74,10 @@ executeReplace = dbTestCase (\dbh ->
                             )
 
 testExecuteMany = dbTestCase (\dbh ->
-    do sth <- prepare dbh "INSERT INTO test1 VALUES ('multi',?,?,?)"
+    do sth <- prepare dbh "INSERT INTO hdbctest1 VALUES ('multi',?,?,?)"
        executeMany sth rows
        commit dbh
-       sth <- prepare dbh "SELECT testid, testint, testtext FROM test1 WHERE testname = 'multi'"
+       sth <- prepare dbh "SELECT testid, testint, testtext FROM hdbctest1 WHERE testname = 'multi'"
        execute sth []
        r <- fetchAllRows sth
        assertEqual "" rows r
@@ -87,10 +87,10 @@ testExecuteMany = dbTestCase (\dbh ->
                   [toSql "3", SqlNull, SqlNull]]
 
 testFetchAllRows = dbTestCase (\dbh ->
-    do sth <- prepare dbh "INSERT INTO test1 VALUES ('sFetchAllRows', ?, NULL, NULL)"
+    do sth <- prepare dbh "INSERT INTO hdbctest1 VALUES ('sFetchAllRows', ?, NULL, NULL)"
        executeMany sth rows
        commit dbh
-       sth <- prepare dbh "SELECT testid FROM test1 WHERE testname = 'sFetchAllRows' ORDER BY testid"
+       sth <- prepare dbh "SELECT testid FROM hdbctest1 WHERE testname = 'sFetchAllRows' ORDER BY testid"
        execute sth []
        results <- fetchAllRows sth
        assertEqual "" rows results
@@ -98,10 +98,10 @@ testFetchAllRows = dbTestCase (\dbh ->
     where rows = map (\x -> [iToSql x]) [1..9]
 
 basicTransactions = dbTestCase (\dbh ->
-    do sth <- prepare dbh "INSERT INTO test1 VALUES ('basicTransactions', ?, NULL, NULL)"
+    do sth <- prepare dbh "INSERT INTO hdbctest1 VALUES ('basicTransactions', ?, NULL, NULL)"
        execute sth [iToSql 0]
        commit dbh
-       qrysth <- prepare dbh "SELECT testid FROM test1 WHERE testname = 'basicTransactions' ORDER BY testid"
+       qrysth <- prepare dbh "SELECT testid FROM hdbctest1 WHERE testname = 'basicTransactions' ORDER BY testid"
        execute qrysth []
        fetchAllRows qrysth >>= (assertEqual "initial commit" [[toSql "0"]])
 
@@ -120,10 +120,10 @@ basicTransactions = dbTestCase (\dbh ->
     where rows = map (\x -> [iToSql $ x]) [1..9]
 
 testWithTransaction = dbTestCase (\dbh ->
-    do sth <- prepare dbh "INSERT INTO test1 VALUES ('withTransaction', ?, NULL, NULL)"
+    do sth <- prepare dbh "INSERT INTO hdbctest1 VALUES ('withTransaction', ?, NULL, NULL)"
        execute sth [toSql "0"]
        commit dbh
-       qrysth <- prepare dbh "SELECT testid FROM test1 WHERE testname = 'withTransaction' ORDER BY testid"
+       qrysth <- prepare dbh "SELECT testid FROM hdbctest1 WHERE testname = 'withTransaction' ORDER BY testid"
        execute qrysth []
        fetchAllRows qrysth >>= (assertEqual "initial commit" [[toSql "0"]])
        
