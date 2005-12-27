@@ -11,6 +11,10 @@ rowdata =
      [SqlInt32 1, toSql "Foo", SqlInt32 5],
      [SqlInt32 2, toSql "Bar", SqlInt32 9]]
 
+colnames = ["testid", "teststring", "testint"]
+alrows :: [[(String, SqlValue)]]
+alrows = map (zip colnames) rowdata
+
 setup f = dbTestCase $ \dbh ->
    do run dbh "CREATE TABLE hdbctest2 (testid INTEGER PRIMARY KEY NOT NULL, teststring TEXT, testint INTEGER)" []
       sth <- prepare dbh "INSERT INTO hdbctest2 VALUES (?, ?, ?)"
@@ -25,7 +29,19 @@ testgetColumnNames = setup $ \dbh ->
    do sth <- prepare dbh "SELECT * from hdbctest2"
       execute sth []
       cols <- getColumnNames sth
-      ["testid", "teststring", "testint"] @=? map (map toLower) cols
       finish sth
+      ["testid", "teststring", "testint"] @=? map (map toLower) cols
 
-tests = TestList [TestLabel "getColumnNames" testgetColumnNames]
+testquickQuery = setup $ \dbh ->
+    do results <- quickQuery dbh "SELECT * from hdbctest2 ORDER BY testid" []
+       rowdata @=? results
+
+testfetchRowAL = setup $ \dbh ->
+    do sth <- prepare dbh "SELECT * from hdbctest2 ORDER BY testid" 
+       execute sth []
+       fetchRowAL sth >>= (Just (head alrows) @=?)
+       finish sth
+
+tests = TestList [TestLabel "getColumnNames" testgetColumnNames,
+                  TestLabel "quickQuery" testquickQuery,
+                  TestLabel "fetchRowAL" testfetchRowAL]
