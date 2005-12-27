@@ -40,6 +40,9 @@ testfetchRowAL = setup $ \dbh ->
     do sth <- prepare dbh "SELECT * from hdbctest2 ORDER BY testid" 
        execute sth []
        fetchRowAL sth >>= (Just (head alrows) @=?)
+       fetchRowAL sth >>= (Just (alrows !! 1) @=?)
+       fetchRowAL sth >>= (Just (alrows !! 2) @=?)
+       fetchRowAL sth >>= (Nothing @=?)
        finish sth
 
 tests = TestList [TestLabel "getColumnNames" testgetColumnNames,
