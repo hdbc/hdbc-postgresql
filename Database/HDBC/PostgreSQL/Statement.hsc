@@ -98,11 +98,11 @@ fexecute sstate args = withForeignPtr (dbo sstate) $ \cconn ->
                 numrows <- pqntuples resptr
                 if numrows < 1
                    then do pqclear resptr
-                           return (fromIntegral numrows)
+                           return 0
                    else do fresptr <- newForeignPtr pqclearptr resptr
                            swapMVar (nextrowmv sstate) 0
                            swapMVar (stomv sstate) (Just fresptr)
-                           return (-1)
+                           return 0
          _ -> do csstatusmsg <- pqresStatus status
                  cserrormsg <- pqresultErrorMessage resptr
                  statusmsg <- peekCString csstatusmsg
