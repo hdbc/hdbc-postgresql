@@ -65,9 +65,16 @@ testfetchAllRowsMap = setup $ \dbh ->
        execute sth []
        fetchAllRowsMap sth >>= (map (Map.fromList) alrows @=?)
 
+testexception = setup $ \dbh ->
+    catchSql (do prepare dbh "SELECT invalidcol FROM hdbctest2"
+                 assertFailure "No exception was raised"
+             )
+             (\e -> return ())
+
 tests = TestList [TestLabel "getColumnNames" testgetColumnNames,
                   TestLabel "quickQuery" testquickQuery,
                   TestLabel "fetchRowAL" testfetchRowAL,
                   TestLabel "fetchRowMap" testfetchRowMap,
                   TestLabel "fetchAllRowsAL" testfetchAllRowsAL,
-                  TestLabel "fetchAllRowsMap" testfetchAllRowsMap]
+                  TestLabel "fetchAllRowsMap" testfetchAllRowsMap,
+                  TestLabel "sql exception" testexception]
