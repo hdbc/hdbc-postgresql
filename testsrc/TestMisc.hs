@@ -90,7 +90,18 @@ testrowcount = setup $ \dbh ->
          [[SqlInt32 0, toSql "Testing", SqlInt32 26],
           [SqlInt32 1, toSql "Foo", SqlInt32 27],
           [SqlInt32 2, toSql "Bar", SqlInt32 27]] res
-                                                             
+                       
+{- Since we might be running against a live DB, we can't look at a specific
+list here (though a SpecificDB test case may be able to).  We can ensure
+that our test table is, or is not, present, as appropriate. -}
+                                      
+testgetTables1 = setup $ \dbh ->
+    do r <- getTables dbh
+       True @=? "hdbctest2" `elem` r
+
+testgetTables2 = dbTestCase $ \dbh ->
+    do r <- getTables dbh
+       False @=? "hdbctest2" `elem` r
 
 testclone = setup $ \dbho -> cloneTest dbho $ \dbh ->
     do results <- quickQuery dbh "SELECT * from hdbctest2 ORDER BY testid" []
@@ -104,4 +115,6 @@ tests = TestList [TestLabel "getColumnNames" testgetColumnNames,
                   TestLabel "fetchAllRowsMap" testfetchAllRowsMap,
                   TestLabel "sql exception" testexception,
                   TestLabel "clone" testclone,
-                  TestLabel "update rowcount" testrowcount]
+                  TestLabel "update rowcount" testrowcount,
+                  TestLabel "get tables1" testgetTables1,
+                  TestLabel "get tables2" testgetTables2]
