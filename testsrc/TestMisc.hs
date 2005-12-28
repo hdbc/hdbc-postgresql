@@ -5,6 +5,7 @@ import TestUtils
 import System.IO
 import Control.Exception
 import Data.Char
+import Control.Monad
 import qualified Data.Map as Map
 
 rowdata = 
@@ -108,11 +109,14 @@ testclone = setup $ \dbho -> cloneTest dbho $ \dbh ->
        rowdata @=? results
 
 testnulls = setup $ \dbh ->
-    do sth <- prepare dbh "INSERT INTO hdbctest2 VALUES (?, ?, ?)"
-       executeMany sth rows
-       finish sth
-       res <- quickQuery dbh "SELECT * from hdbctest2 WHERE testid > 99 ORDER BY testid" []
-       seq (length res) rows @=? res
+    do let dn = hdbcDriverName dbh
+       when (not (dn `elem` ["postgresql"])) (
+          do sth <- prepare dbh "INSERT INTO hdbctest2 VALUES (?, ?, ?)"
+             executeMany sth rows
+             finish sth
+             res <- quickQuery dbh "SELECT * from hdbctest2 WHERE testid > 99 ORDER BY testid" []
+             seq (length res) rows @=? res
+                                             )
     where rows = [[SqlInt32 100, SqlString "foo\NULbar", SqlNull],
                   [SqlInt32 101, SqlString "bar\NUL", SqlNull],
                   [SqlInt32 102, SqlString "\NUL", SqlNull],
