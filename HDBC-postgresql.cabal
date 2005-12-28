@@ -13,7 +13,7 @@ Other-Modules: Database.HDBC.PostgreSQL.Connection,
  Database.HDBC.PostgreSQL.Parser
 --Extensions: ExistentialQuantification, AllowOverlappingInstances,
 --    AllowUndecidableInstances, CPP
-Extensions: ExistentialQuantification
+Extensions: ExistentialQuantification, CPP
 Build-Depends: base, mtl, HDBC>=0.99.0
 GHC-Options: -O2
-include-dirs: /usr/include/postgresql
+include-dirs: /usr/include/postgresql, .

@@ -1,4 +1,7 @@
-{- -*- mode: haskell; -*-
+-- -*- mode: haskell; -*-
+{-# CFILES hugs-postgresql-helper.c #-}
+-- Above line for hugs
+{-
 Copyright (C) 2005 John Goerzen <jgoerzen@complete.org>
 
     This library is free software; you can redistribute it and/or
@@ -42,22 +45,41 @@ connectPostgreSQL :: String -> IO Connection
 connectPostgreSQL args = withCString args $
   \cs -> do ptr <- pqconnectdb cs
             status <- pqstatus ptr
+#ifdef __HUGS__
+            env <- pqhugs_alloc_env
+            fptr <- newForeignPtrEnv pqfinishptr env ptr
+#else
             fptr <- newForeignPtr pqfinishptr ptr
+#endif
+
             case status of
+#ifdef __HUGS__
+                     #{const CONNECTION_OK} -> mkConn args env fptr
+#else
                      #{const CONNECTION_OK} -> mkConn args fptr
+#endif
                      _ -> raiseError "connectPostgreSQL" status ptr
 
--- FIXME: environment may have changed, should use pgsql enquiries
+-- FIXME: environment vars may have changed, should use pgsql enquiries
 -- for clone.
+#ifdef __HUGS__
+mkConn :: String -> Ptr CInt -> Conn -> IO Connection
+mkConn args env conn = withConn conn $
+#else
 mkConn :: String -> Conn -> IO Connection
 mkConn args conn = withConn conn $
+#endif
   \cconn -> 
     do begin_transaction conn
        protover <- pqprotocolVersion cconn
        serverver <- pqserverVersion cconn
        let clientver = #{const_str PG_VERSION}
        return $ Connection {
+#ifdef __HUGS__
+                            disconnect = fdisconnect env conn,
+#else
                             disconnect = fdisconnect conn,
+#endif
                             commit = fcommit conn,
                             rollback = frollback conn,
                             run = frun conn,
@@ -87,7 +109,11 @@ fcommit o = do frun o "COMMIT" []
 frollback o =  do frun o "ROLLBACK" []
                   begin_transaction o
 
+#ifdef __HUGS__
+fdisconnect env conn = withConn conn (\cconn -> pqfinish env cconn)
+#else
 fdisconnect = finalizeForeignPtr
+#endif
 
 foreign import ccall unsafe "libpq-fe.h PQconnectdb"
   pqconnectdb :: CString -> IO (Ptr CConn)
@@ -95,8 +121,20 @@ foreign import ccall unsafe "libpq-fe.h PQconnectdb"
 foreign import ccall unsafe "libpq-fe.h PQstatus"
   pqstatus :: Ptr CConn -> IO #{type ConnStatusType}
 
+#ifdef __HUGS__
+-- already imported from Statement.hsc
+--foreign import ccall unsafe "hugs-postgresql-helper.h PQhugs_alloc_env"
+--  pqhugs_alloc_env :: IO (Ptr CInt)
+
+foreign import ccall unsafe "hugs-postgresql-helper.h PQfinish_hugs_app"
+  pqfinish :: Ptr CInt -> Ptr CConn -> IO ()
+
+foreign import ccall unsafe "hugs-postgresql-helper.h &PQfinish_hugs_fptr"
+  pqfinishptr :: FunPtr (Ptr CInt -> Ptr CConn -> IO ())
+#else
 foreign import ccall unsafe "libpq-fe.h &PQfinish"
   pqfinishptr :: FunPtr ((Ptr CConn) -> IO ())
+#endif
 
 foreign import ccall unsafe "libpq-fe.h PQprotocolVersion"
   pqprotocolVersion :: Ptr CConn -> IO CInt

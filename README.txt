@@ -26,7 +26,12 @@ PREREQUISITES
 -------------
 
 Before installing this package, you'll need to have HDBC 0.99.0 or
-above installed.  You can download HDBC from http://quux.org/devel/hdbc.
+above installed.  You can download HDBC from
+http://quux.org/devel/hdbc.
+
+You'll need either GHC 6.4.1 or above, or Hugs 2005xx or above.  If
+you're using Hugs, you'll also need cpphs (see
+http://www.cs.york.ac.uk/fp/cpphs/ if you don't already have it).
 
 INSTALLATION
 ------------

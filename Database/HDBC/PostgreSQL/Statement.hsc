@@ -1,4 +1,7 @@
-{- -*- mode:haskell; -*-
+-- -*- mode: haskell; -*-
+{-# CFILES hugs-postgresql-helper.c #-}
+-- Above line for hugs
+{-
 Copyright (C) 2005 John Goerzen <jgoerzen@complete.org>
 
     This library is free software; you can redistribute it and/or
@@ -41,6 +44,9 @@ l _ = return ()
 
 data SState = 
     SState { stomv :: MVar (Maybe Stmt),
+#ifdef __HUGS__
+             envmv :: MVar (Maybe (Ptr CInt)),
+#endif
              nextrowmv :: MVar (CInt), -- -1 for no next row (empty); otherwise, next row to read.
              dbo :: Conn,
              squery :: String,
@@ -52,6 +58,9 @@ newSth :: Conn -> String -> IO Statement
 newSth indbo query = 
     do l "in newSth"
        newstomv <- newMVar Nothing
+#ifdef __HUGS__
+       newenvmv <- newMVar Nothing
+#endif
        newnextrowmv <- newMVar (-1)
        newcolnamemv <- newMVar []
        usequery <- case convertSQL query of
@@ -63,6 +72,9 @@ newSth indbo query =
                       Right converted -> return converted
        let sstate = SState {stomv = newstomv, nextrowmv = newnextrowmv,
                             dbo = indbo, squery = usequery,
+#ifdef __HUGS__
+                            envmv = newenvmv,
+#endif
                             colnamemv = newcolnamemv}
        return $ Statement {execute = fexecute sstate,
                            executeMany = fexecutemany sstate,
@@ -103,10 +115,19 @@ fexecute sstate args = withForeignPtr (dbo sstate) $ \cconn ->
                 if numrows < 1
                    then do pqclear resptr
                            return 0
-                   else do fresptr <- newForeignPtr pqclearptr resptr
-                           swapMVar (nextrowmv sstate) 0
-                           swapMVar (stomv sstate) (Just fresptr)
-                           return 0
+                   else do 
+#ifdef __HUGS__
+                        env <- pqhugs_alloc_env
+                        fresptr <- newForeignPtrEnv pqclearptr env resptr
+#else
+                        fresptr <- newForeignPtr pqclearptr resptr
+#endif
+                        swapMVar (nextrowmv sstate) 0
+                        swapMVar (stomv sstate) (Just fresptr)
+#ifdef __HUGS__
+                        swapMVar (envmv sstate) (Just env)
+#endif
+                        return 0
          _ -> do l $ "PGRES ERROR: " ++ squery sstate
                  csstatusmsg <- pqresStatus status
                  cserrormsg <- pqresultErrorMessage resptr
@@ -135,7 +156,11 @@ ffetchrow sstate = modifyMVar (nextrowmv sstate) dofetchrow
                     if nextrow >= numrows
                        then do l "no more rows"
                                -- Don't use public_ffinish here
+#ifdef __HUGS__
+                               ffinish (envmv sstate) cmstmt
+#else
                                ffinish cmstmt
+#endif
                                return (Nothing, ((-1), Nothing))
                        else do l "getting stuff"
                                ncols <- pqnfields cstmt
@@ -165,10 +190,23 @@ public_ffinish sstate =
        swapMVar (nextrowmv sstate) (-1)
        modifyMVar_ (stomv sstate) worker
     where worker Nothing = return Nothing
+#ifdef __HUGS__
+          worker (Just sth) = ffinish (envmv sstate) sth >> return Nothing
+#else
           worker (Just sth) = ffinish sth >> return Nothing
+#endif
 
+#ifdef __HUGS__
+ffinish :: MVar (Maybe (Ptr CInt)) -> Stmt -> IO ()
+ffinish envmv p = modifyMVar_ envmv $ \mcenv ->
+    do case mcenv of
+          Nothing -> fail "Internal error, HDBC PostgreSQL hugs: ffinish called when no cenv present"
+          Just cenv -> do withStmt p $ \cstmt -> pqclear_hugs cenv cstmt
+                          return Nothing
+#else
 ffinish :: Stmt -> IO ()
 ffinish p = l "ffinish" >> finalizeForeignPtr p
+#endif
 
 foreign import ccall unsafe "libpq-fe.h PQresultStatus"
   pqresultStatus :: (Ptr CStmt) -> IO #{type ExecStatusType}
@@ -182,8 +220,19 @@ foreign import ccall unsafe "libpq-fe.h PQexecParams"
                   CInt ->
                   IO (Ptr CStmt)
 
+#ifdef __HUGS__
+foreign import ccall unsafe "hugs-postgresql-helper.h PQhugs_alloc_env"
+  pqhugs_alloc_env :: IO (Ptr CInt)
+
+foreign import ccall unsafe "hugs-postgresql-helper.h PQclear_hugs_app"
+  pqclear_hugs :: Ptr CInt -> Ptr CStmt -> IO ()
+
+foreign import ccall unsafe "hugs-postgresql-helper.h &PQclear_hugs_fptr"
+  pqclearptr :: FunPtr (Ptr CInt -> Ptr CStmt -> IO ())
+#else
 foreign import ccall unsafe "libpq-fe.h &PQclear"
   pqclearptr :: FunPtr ((Ptr CStmt) -> IO ())
+#endif
 
 foreign import ccall unsafe "libpq-fe.h PQclear"
   pqclear :: Ptr CStmt -> IO ()
