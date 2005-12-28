@@ -1,4 +1,4 @@
-module TestMisc(tests) where
+module TestMisc(tests, setup) where
 import Test.HUnit
 import Database.HDBC
 import TestUtils
