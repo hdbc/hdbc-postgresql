@@ -89,7 +89,8 @@ mkConn args conn = withConn conn $
                             hdbcClientVer = clientver,
                             proxiedClientName = "postgresql",
                             proxiedClientVer = show protover,
-                            dbServerVer = show serverver}
+                            dbServerVer = show serverver,
+                            getTables = fgetTables conn}
 
 --------------------------------------------------
 -- Guts here
@@ -108,6 +109,13 @@ fcommit o = do frun o "COMMIT" []
                begin_transaction o
 frollback o =  do frun o "ROLLBACK" []
                   begin_transaction o
+
+fgetTables conn =
+    do sth <- newSth conn "select table_name from information_schema.tables where table_schema = 'public'"
+       execute sth []
+       res1 <- fetchAllRows sth
+       let res = map fromSql $ concat res1
+       return $ seq (length res) res
 
 #ifdef __HUGS__
 fdisconnect env conn = withConn conn (\cconn -> pqfinish env cconn)
