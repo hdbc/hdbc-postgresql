@@ -17,12 +17,14 @@ alrows :: [[(String, SqlValue)]]
 alrows = map (zip colnames) rowdata
 
 setup f = dbTestCase $ \dbh ->
-   do run dbh "CREATE TABLE hdbctest2 (testid INTEGER PRIMARY KEY NOT NULL, teststring TEXT, testint INTEGER)" []
-      sth <- prepare dbh "INSERT INTO hdbctest2 VALUES (?, ?, ?)"
+   do dbh2 <- clone dbh
+      run dbh2 "CREATE TABLE hdbctest2 (testid INTEGER PRIMARY KEY NOT NULL, teststring TEXT, testint INTEGER)" []
+      sth <- prepare dbh2 "INSERT INTO hdbctest2 VALUES (?, ?, ?)"
       executeMany sth rowdata
-      commit dbh
-      finally (f dbh)
-              (do run dbh "DROP TABLE hdbctest2" []
+      commit dbh2
+      finally (f dbh2)
+              (do try (disconnect dbh2) 
+                  run dbh "DROP TABLE hdbctest2" []
                   commit dbh
               )
 
