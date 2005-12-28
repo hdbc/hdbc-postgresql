@@ -107,6 +107,19 @@ testclone = setup $ \dbho -> cloneTest dbho $ \dbh ->
     do results <- quickQuery dbh "SELECT * from hdbctest2 ORDER BY testid" []
        rowdata @=? results
 
+testnulls = setup $ \dbh ->
+    do sth <- prepare dbh "INSERT INTO hdbctest2 VALUES (?, ?, ?)"
+       executeMany sth rows
+       finish sth
+       res <- quickQuery dbh "SELECT * from hdbctest2 ORDER BY testid" []
+       rows @=? res
+    where rows = [[SqlInt32 100, "foo\NULbar", SqlNull],
+                  [SqlInt32 101, "bar\NUL", SqlNull],
+                  [SqlInt32 102, "\NUL", SqlNull],
+                  [SqlInt32 103, "\xFF", SqlNull],
+                  [SqlInt32 104, "regular", SqlNull]]
+       
+
 tests = TestList [TestLabel "getColumnNames" testgetColumnNames,
                   TestLabel "quickQuery" testquickQuery,
                   TestLabel "fetchRowAL" testfetchRowAL,
@@ -117,4 +130,5 @@ tests = TestList [TestLabel "getColumnNames" testgetColumnNames,
                   TestLabel "clone" testclone,
                   TestLabel "update rowcount" testrowcount,
                   TestLabel "get tables1" testgetTables1,
-                  TestLabel "get tables2" testgetTables2]
+                  TestLabel "get tables2" testgetTables2,
+                  TestLabel "nulls" testnulls]
