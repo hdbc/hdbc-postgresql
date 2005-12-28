@@ -87,11 +87,14 @@ newSth indbo query =
 FIXME lots of room for improvement here (types, etc). -}
 fexecute sstate args = withForeignPtr (dbo sstate) $ \cconn ->
                        withCString (squery sstate) $ \cquery ->
-                       withCStringArr0 args $ \cargs ->
+                       withCStringArr0 args $ \paramvalues ->
+                       withArray (map convlengths args) $ \paramlengths ->
+                       withArray (map convformats args) $ \paramformats ->
     do l "in fexecute"
        public_ffinish sstate    -- Sets nextrowmv to -1
        resptr <- pqexecParams cconn cquery
-                 (genericLength args) nullPtr cargs nullPtr nullPtr 0
+                 (genericLength args) nullPtr paramvalues paramlengths
+                 paramformats 0
        status <- pqresultStatus resptr
        case status of
          #{const PGRES_EMPTY_QUERY} ->
@@ -139,6 +142,12 @@ fexecute sstate args = withForeignPtr (dbo sstate) $ \cconn ->
                                     seNativeError = fromIntegral status,
                                     seErrorMsg = "execute: " ++ statusmsg ++
                                                  ": " ++ errormsg}
+    where convlengths :: SqlValue -> CInt
+          convlengths (SqlString x) = genericLength x
+          convlengths _ = 0
+          convformats :: SqlValue -> CInt
+          convformats (SqlString _) = 1
+          convformats _ = 0
 {- General algorithm: find out how many columns we have, check the type
 of each to see if it's NULL.  If it's not, fetch it as text and return that.
 -}
@@ -171,8 +180,9 @@ ffetchrow sstate = modifyMVar (nextrowmv sstate) dofetchrow
              do isnull <- pqgetisnull p row icol
                 if isnull /= 0
                    then return SqlNull
-                   else do text <- pqgetvalue p row icol
-                           s <- peekCString text
+                   else do len <- pqgetlength p row icol
+                           text <- pqgetvalue p row icol
+                           s <- peekCStringLen (text, fromIntegral len)
                            return (SqlString s)
 
 fgetcolnames cstmt =
@@ -256,6 +266,9 @@ foreign import ccall unsafe "libpq-fe.h PQgetisnull"
 
 foreign import ccall unsafe "libpq-fe.h PQgetvalue"
   pqgetvalue :: Ptr CStmt -> CInt -> CInt -> IO CString
+
+foreign import ccall unsafe "libpq-fe.h PQgetlength"
+  pqgetlength :: Ptr CStmt -> CInt -> CInt -> IO CInt
 
 foreign import ccall unsafe "libpq-fe.h PQfname"
   pqfname :: Ptr CStmt -> CInt -> IO CString
