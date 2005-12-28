@@ -12,7 +12,7 @@ openClosedb = sqlTestCase $
 multiFinish = dbTestCase (\dbh ->
     do sth <- prepare dbh "SELECT 1 + 1"
        r <- execute sth []
-       assertEqual "basic count" (-1) r
+       assertEqual "basic count" 0 r
        finish sth
        finish sth
        finish sth
@@ -20,7 +20,7 @@ multiFinish = dbTestCase (\dbh ->
 
 basicQueries = dbTestCase (\dbh ->
     do sth <- prepare dbh "SELECT 1 + 1"
-       execute sth []
+       execute sth [] >>= (0 @=?)
        r <- fetchAllRows sth
        assertEqual "converted from" [["2"]] (map (map fromSql) r)
        assertEqual "int32 compare" [[SqlInt32 2]] r
@@ -42,15 +42,12 @@ dropTable = dbTestCase (\dbh ->
 
 runReplace = dbTestCase (\dbh ->
     do r <- run dbh "INSERT INTO hdbctest1 VALUES (?, ?, ?, ?)" r1
-       case hdbcDriverName dbh of
-          "sqlite3" -> -- No support for number of rows modified in sqlite3
-                       assertEqual "insert retval" (-1) r
-          _ -> assertEqual "insert retval" 1 r
+       assertEqual "insert retval" 1 r
        run dbh "INSERT INTO hdbctest1 VALUES (?, ?, ?, ?)" r2
        commit dbh
        sth <- prepare dbh "SELECT * FROM hdbctest1 WHERE testname = 'runReplace' ORDER BY testid"
        rv2 <- execute sth []
-       assertEqual "select retval" (-1) rv2
+       assertEqual "select retval" 0 rv2
        r <- fetchAllRows sth
        assertEqual "" [r1, r2] r
                        )
