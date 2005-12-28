@@ -1,20 +1,31 @@
 Source: hdbc-postgresql
 Priority: optional
 Maintainer: John Goerzen <jgoerzen@complete.org>
-Build-Depends: debhelper (>= 4.0.0)
+Build-Depends: debhelper (>= 4.0.0), ghc6 (>= 6.4.1), ghc6 (<< 6.4.1-999), haskell-devscripts (>= 0.5.6), cpphs, haddock, hugs (>= 98.200503.08), libghc6-hdbc-dev (>= 0.99.0), libhugs-hdbc (>= 0.99.0), libpq-dev (>= 8.1.1)
 Standards-Version: 3.6.2
 Section: libs
 
-Package: hdbc-postgresql-dev
+Package: libghc6-hdbc-postgresql-dev
 Section: libdevel
 Architecture: any
-Depends: hdbc-postgresqlBROKEN (= ${Source-Version})
-Description: <insert up to 60 chars description>
- <insert long description, indented with spaces>
+Depends: libghc6-hdbc-dev (>= 0.99.0), ${haskell:Depends}, ${shlibs:Depends}, ${misc:Depends}, libpq-dev (>= 8.1.1)
+Description: PostgreSQL HDBC (Haskell Database Connectivity) Driver for GHC
+ HDBC provides an abstraction layer between Haskell programs and SQL
+ relational databases. This lets you write database code once, in
+ Haskell, and have it work with any number of backend SQL databases
+ (MySQL, Oracle, PostgreSQL, ODBC-compliant databases, etc.)
+ .
+ This package provides the PostgreSQL database driver for HDBC under GHC.
 
-Package: hdbc-postgresqlBROKEN
+Package: libhugs-hdbc-postgresql
 Section: libs
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}
-Description: <insert up to 60 chars description>
- <insert long description, indented with spaces>
+Depends: libhugs-hdbc (>= 0.99.0), ${haskell:Depends}, ${shlibs:Depends}, ${misc:Depends}
+
+Description: PostgreSQL HDBC (Haskell Database Connectivity) Driver for Hugs
+ HDBC provides an abstraction layer between Haskell programs and SQL
+ relational databases. This lets you write database code once, in
+ Haskell, and have it work with any number of backend SQL databases
+ (MySQL, Oracle, PostgreSQL, ODBC-compliant databases, etc.)
+ .
+ This package provides the PostgreSQL database driver for HDBC under Hugs.

@@ -42,7 +42,7 @@ build-stamp: configure-stamp
 	dh_testdir
 
 	# Add here commands to compile the package.
-	$(MAKE)
+	#$(MAKE)
 
 	touch build-stamp
 
@@ -53,6 +53,8 @@ clean:
 
 	# Add here commands to clean up after the build process.
 	-$(MAKE) clean
+	-./setup clean
+	-rm -rf setup Setup.hi Setup.ho Setup.o .*config* dist
 
 	dh_clean 
 
@@ -63,20 +65,22 @@ install: build
 	dh_installdirs
 
 	# Add here commands to install the package into debian/tmp
-	$(MAKE) install DESTDIR=$(CURDIR)/debian/tmp
-
+	#$(MAKE) install DESTDIR=$(CURDIR)/debian/tmp
+	dh_haskell -a
+	$(MAKE) clean
+	$(MAKE) test
 
 # Build architecture-independent files here.
 binary-indep: build install
-# We have nothing to do by default.
+# Nothing to do by default.
 
 # Build architecture-dependent files here.
 binary-arch: build install
 	dh_testdir
 	dh_testroot
-	dh_installchangelogs 
-	dh_installdocs
-	dh_installexamples
+	dh_installchangelogs -a
+	dh_installdocs -a README.txt
+	dh_installexamples -a
 #	dh_install
 #	dh_installmenu
 #	dh_installdebconf	
@@ -87,19 +91,19 @@ binary-arch: build install
 #	dh_installinit
 #	dh_installcron
 #	dh_installinfo
-	dh_installman
-	dh_link
-	dh_strip
-	dh_compress
-	dh_fixperms
+	dh_installman -a
+	dh_link -a
+	dh_strip -a
+	dh_compress -a
+	dh_fixperms -a
 #	dh_perl
 #	dh_python
 #	dh_makeshlibs
-	dh_installdeb
-	dh_shlibdeps
-	dh_gencontrol
-	dh_md5sums
-	dh_builddeb
+	dh_installdeb -a
+	dh_shlibdeps -a
+	dh_gencontrol -a
+	dh_md5sums -a
+	dh_builddeb -a
 
 binary: binary-indep binary-arch
 .PHONY: build clean binary-indep binary-arch binary install configure
