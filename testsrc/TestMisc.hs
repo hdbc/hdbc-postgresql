@@ -76,6 +76,21 @@ testexception = setup $ \dbh ->
              )
              (\e -> return ())
 
+testrowcount = setup $ \dbh ->
+    do r <- run dbh "UPDATE hdbctest2 SET testint = 25 WHERE testid = 20" []
+       assertEqual "UPDATE with no change" 0 r
+       r <- run dbh "UPDATE hdbctest2 SET testint = 26 WHERE testid = 0" []
+       assertEqual "UPDATE with 1 change" 1 r
+       r <- run dbh "UPDATE hdbctest2 SET testing = 27 WHERE testid <> 0" []
+       assertEqual "UPDATE with 2 changes" 2 r
+       commit dbh
+       res <- quickQuery dbh "SELECT * from hdbctest2 ORDER BY testid" []
+       assertEqual "final results"
+         [[SqlInt32 0, toSql "Testing", SqlInt32 26],
+          [SqlInt32 1, toSql "Foo", SqlInt32 27],
+          [SqlInt32 2, toSql "bar", SqlInt32 27]] res
+                                                             
+
 testclone = setup $ \dbho -> cloneTest dbho $ \dbh ->
     do results <- quickQuery dbh "SELECT * from hdbctest2 ORDER BY testid" []
        rowdata @=? results
@@ -87,4 +102,5 @@ tests = TestList [TestLabel "getColumnNames" testgetColumnNames,
                   TestLabel "fetchAllRowsAL" testfetchAllRowsAL,
                   TestLabel "fetchAllRowsMap" testfetchAllRowsMap,
                   TestLabel "sql exception" testexception,
-                  TestLabel "clone" testclone]
+                  TestLabel "clone" testclone,
+                  TestLabel "update rowcount" testrowcount]
