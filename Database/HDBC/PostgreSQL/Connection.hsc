@@ -36,7 +36,7 @@ import Data.Word
 
 {- | Connect to a PostgreSQL server.
 
-See <http://www.postgresql.org/docs/8.1/static/libpq.html> for the meaning
+See <http://www.postgresql.org/docs/8.1/static/libpq.html#LIBPQ-CONNECT> for the meaning
 of the connection string. -}
 connectPostgreSQL :: String -> IO Connection
 connectPostgreSQL args = withCString args $
