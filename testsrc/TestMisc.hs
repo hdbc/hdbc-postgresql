@@ -71,10 +71,11 @@ testfetchAllRowsMap = setup $ \dbh ->
        fetchAllRowsMap sth >>= (map (Map.fromList) alrows @=?)
 
 testexception = setup $ \dbh ->
-    catchSql (do prepare dbh "SELECT invalidcol FROM hdbctest2"
+    catchSql (do sth <- prepare dbh "SELECT invalidcol FROM hdbctest2"
+                 execute sth []
                  assertFailure "No exception was raised"
              )
-             (\e -> return ())
+             (\e -> commit dbh)
 
 testrowcount = setup $ \dbh ->
     do r <- run dbh "UPDATE hdbctest2 SET testint = 25 WHERE testid = 20" []
