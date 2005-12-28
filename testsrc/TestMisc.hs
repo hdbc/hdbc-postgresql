@@ -26,6 +26,11 @@ setup f = dbTestCase $ \dbh ->
                   commit dbh
               )
 
+cloneTest dbh a =
+    do dbh2 <- clone dbh
+       finally (handleSqlError (a dbh2))
+               (handleSqlError (disconnect dbh2))
+
 testgetColumnNames = setup $ \dbh ->
    do sth <- prepare dbh "SELECT * from hdbctest2"
       execute sth []
@@ -71,10 +76,15 @@ testexception = setup $ \dbh ->
              )
              (\e -> return ())
 
+testclone = setup $ \dbho -> cloneTest dbho $ \dbh ->
+    do results <- quickQuery dbh "SELECT * from hdbctest2 ORDER BY testid" []
+       rowdata @=? results
+
 tests = TestList [TestLabel "getColumnNames" testgetColumnNames,
                   TestLabel "quickQuery" testquickQuery,
                   TestLabel "fetchRowAL" testfetchRowAL,
                   TestLabel "fetchRowMap" testfetchRowMap,
                   TestLabel "fetchAllRowsAL" testfetchAllRowsAL,
                   TestLabel "fetchAllRowsMap" testfetchAllRowsMap,
-                  TestLabel "sql exception" testexception]
+                  TestLabel "sql exception" testexception,
+                  TestLabel "clone" testclone]
