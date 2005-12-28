@@ -68,7 +68,9 @@ install: build
 	#$(MAKE) install DESTDIR=$(CURDIR)/debian/tmp
 	dh_haskell -a
 	$(MAKE) clean
-	$(MAKE) test
+# We can't test PostgreSQL because the server may not be available for
+# the build user.
+#$(MAKE) test
 
 # Build architecture-independent files here.
 binary-indep: build install

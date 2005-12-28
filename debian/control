@@ -21,7 +21,6 @@ Package: libhugs-hdbc-postgresql
 Section: libs
 Architecture: any
 Depends: libhugs-hdbc (>= 0.99.0), ${haskell:Depends}, ${shlibs:Depends}, ${misc:Depends}
-
 Description: PostgreSQL HDBC (Haskell Database Connectivity) Driver for Hugs
  HDBC provides an abstraction layer between Haskell programs and SQL
  relational databases. This lets you write database code once, in
