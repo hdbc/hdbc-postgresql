@@ -42,7 +42,8 @@ data SState =
     SState { stomv :: MVar (Maybe Stmt),
              nextrowmv :: MVar (CInt), -- -1 for no next row (empty); otherwise, next row to read.
              dbo :: Conn,
-             squery :: String}
+             squery :: String,
+             colnamemv :: MVar [String]}
 
 -- FIXME: we currently do no prepare optimization whatsoever.
 
@@ -51,6 +52,7 @@ newSth indbo query =
     do l "in newSth"
        newstomv <- newMVar Nothing
        newnextrowmv <- newMVar (-1)
+       newcolnamemv <- newMVar []
        usequery <- case convertSQL query of
                       Left errstr -> throwDyn $ SqlError
                                       {seState = "",
@@ -59,12 +61,14 @@ newSth indbo query =
                                                     show errstr}
                       Right converted -> return converted
        let sstate = SState {stomv = newstomv, nextrowmv = newnextrowmv,
-                            dbo = indbo, squery = usequery}
+                            dbo = indbo, squery = usequery,
+                            colnamemv = newcolnamemv}
        return $ Statement {execute = fexecute sstate,
                            executeMany = fexecutemany sstate,
                            finish = public_ffinish sstate,
                            fetchRow = ffetchrow sstate,
-                           originalQuery = query}
+                           originalQuery = query,
+                           getColumnNames = readMVar (colnamemv sstate)}
 
 {- For now, we try to just  handle things as simply as possible.
 FIXME lots of room for improvement here (types, etc). -}
@@ -79,16 +83,19 @@ fexecute sstate args = withForeignPtr (dbo sstate) $ \cconn ->
        case status of
          #{const PGRES_EMPTY_QUERY} ->
              do pqclear resptr
-                return (-1)
+                swapMVar (colnamemv sstate) []
+                return 0
          #{const PGRES_COMMAND_OK} ->
              do rowscs <- pqcmdTuples resptr
                 rows <- peekCString rowscs
                 pqclear resptr
+                swapMVar (colnamemv sstate) []
                 return $ case rows of
-                                   "" -> (-1)
+                                   "" -> 0
                                    x -> read x
          #{const PGRES_TUPLES_OK} -> 
-             do numrows <- pqntuples resptr
+             do fgetcolnames resptr >>= swapMVar (colnamemv sstate) 
+                numrows <- pqntuples resptr
                 if numrows < 1
                    then do pqclear resptr
                            return (fromIntegral numrows)
@@ -137,6 +144,10 @@ ffetchrow sstate = modifyMVar (nextrowmv sstate) dofetchrow
                    else do text <- pqgetvalue p row icol
                            s <- peekCString text
                            return (SqlString s)
+
+fgetcolnames cstmt =
+    do ncols <- pqnfields cstmt
+       mapM (\i -> pqfname cstmt i >>= peekCString) [0..(ncols - 1)]
 
 -- FIXME: needs a faster algorithm.
 fexecutemany :: SState -> [[SqlValue]] -> IO ()
@@ -191,3 +202,6 @@ foreign import ccall unsafe "libpq-fe.h PQgetisnull"
 
 foreign import ccall unsafe "libpq-fe.h PQgetvalue"
   pqgetvalue :: Ptr CStmt -> CInt -> CInt -> IO CString
+
+foreign import ccall unsafe "libpq-fe.h PQfname"
+  pqfname :: Ptr CStmt -> CInt -> IO CString
