@@ -113,11 +113,11 @@ testnulls = setup $ \dbh ->
        finish sth
        res <- quickQuery dbh "SELECT * from hdbctest2 ORDER BY testid" []
        rows @=? res
-    where rows = [[SqlInt32 100, "foo\NULbar", SqlNull],
-                  [SqlInt32 101, "bar\NUL", SqlNull],
-                  [SqlInt32 102, "\NUL", SqlNull],
-                  [SqlInt32 103, "\xFF", SqlNull],
-                  [SqlInt32 104, "regular", SqlNull]]
+    where rows = [[SqlInt32 100, SqlString "foo\NULbar", SqlNull],
+                  [SqlInt32 101, SqlString "bar\NUL", SqlNull],
+                  [SqlInt32 102, SqlString "\NUL", SqlNull],
+                  [SqlInt32 103, SqlString "\xFF", SqlNull],
+                  [SqlInt32 104, SqlString "regular", SqlNull]]
        
 
 tests = TestList [TestLabel "getColumnNames" testgetColumnNames,
