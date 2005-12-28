@@ -34,7 +34,8 @@ import Control.Exception
 import System.IO
 import Database.HDBC.PostgreSQL.Parser(convertSQL)
 
-l m = return () -- hPutStrLn stderr ("\n" ++ m)
+l _ = return ()
+--l m = hPutStrLn stderr ("\n" ++ m)
 
 #include <libpq-fe.h>
 
@@ -82,11 +83,13 @@ fexecute sstate args = withForeignPtr (dbo sstate) $ \cconn ->
        status <- pqresultStatus resptr
        case status of
          #{const PGRES_EMPTY_QUERY} ->
-             do pqclear resptr
+             do l $ "PGRES_EMPTY_QUERY: " ++ squery sstate
+                pqclear resptr
                 swapMVar (colnamemv sstate) []
                 return 0
          #{const PGRES_COMMAND_OK} ->
-             do rowscs <- pqcmdTuples resptr
+             do l $ "PGRES_COMMAND_OK: " ++ squery sstate
+                rowscs <- pqcmdTuples resptr
                 rows <- peekCString rowscs
                 pqclear resptr
                 swapMVar (colnamemv sstate) []
@@ -94,7 +97,8 @@ fexecute sstate args = withForeignPtr (dbo sstate) $ \cconn ->
                                    "" -> 0
                                    x -> read x
          #{const PGRES_TUPLES_OK} -> 
-             do fgetcolnames resptr >>= swapMVar (colnamemv sstate) 
+             do l $ "PGRES_TUPLES_OK: " ++ squery sstate
+                fgetcolnames resptr >>= swapMVar (colnamemv sstate) 
                 numrows <- pqntuples resptr
                 if numrows < 1
                    then do pqclear resptr
@@ -103,7 +107,8 @@ fexecute sstate args = withForeignPtr (dbo sstate) $ \cconn ->
                            swapMVar (nextrowmv sstate) 0
                            swapMVar (stomv sstate) (Just fresptr)
                            return 0
-         _ -> do csstatusmsg <- pqresStatus status
+         _ -> do l $ "PGRES ERROR: " ++ squery sstate
+                 csstatusmsg <- pqresStatus status
                  cserrormsg <- pqresultErrorMessage resptr
                  statusmsg <- peekCString csstatusmsg
                  errormsg <- peekCString cserrormsg
