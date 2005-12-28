@@ -1,6 +1,6 @@
 Extra-Libraries: pq
 Name: HDBC-postgresql
-Version: 0.6.0
+Version: 0.99.0.0
 License: LGPL
 Maintainer: John Goerzen <jgoerzen@complete.org>
 Stability: Alpha
@@ -14,6 +14,6 @@ Other-Modules: Database.HDBC.PostgreSQL.Connection,
 --Extensions: ExistentialQuantification, AllowOverlappingInstances,
 --    AllowUndecidableInstances, CPP
 Extensions: ExistentialQuantification
-Build-Depends: base, mtl, HDBC
+Build-Depends: base, mtl, HDBC>=0.99.0
 GHC-Options: -O2
-CC-Options: -I. -I/usr/include/postgresql
+include-dirs: /usr/include/postgresql

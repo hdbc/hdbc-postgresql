@@ -1,6 +1,2 @@
-handle NULLs in strings (may be done)
-
 optimize multiple executions and executeMany
-
-Need a query parser to replace question marks
 
