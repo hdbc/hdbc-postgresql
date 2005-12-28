@@ -5,6 +5,7 @@ import TestUtils
 import System.IO
 import Control.Exception
 import Data.Char
+import qualified Data.Map as Map
 
 rowdata = 
     [[SqlInt32 0, toSql "Testing", SqlNull],
@@ -45,6 +46,28 @@ testfetchRowAL = setup $ \dbh ->
        fetchRowAL sth >>= (Nothing @=?)
        finish sth
 
+testfetchRowMap = setup $ \dbh ->
+    do sth <- prepare dbh "SELECT * from hdbctest2 ORDER BY testid" 
+       execute sth []
+       fetchRowMap sth >>= (Just (Map.fromList $ head alrows) @=?)
+       fetchRowMap sth >>= (Just (Map.fromList $ alrows !! 1) @=?)
+       fetchRowMap sth >>= (Just (Map.fromList $ alrows !! 2) @=?)
+       fetchRowMap sth >>= (Nothing @=?)
+       finish sth
+
+testfetchAllRowsAL = setup $ \dbh ->
+    do sth <- prepare dbh "SELECT * from hdbctest2 ORDER BY testid"
+       execute sth []
+       fetchAllRowsAL sth >>= (alrows @=?)
+
+testfetchAllRowsMap = setup $ \dbh ->
+    do sth <- prepare dbh "SELECT * from hdbctest2 ORDER BY testid"
+       execute sth []
+       fetchAllRowsMap sth >>= (map (Map.fromList) alrows @=?)
+
 tests = TestList [TestLabel "getColumnNames" testgetColumnNames,
                   TestLabel "quickQuery" testquickQuery,
-                  TestLabel "fetchRowAL" testfetchRowAL]
+                  TestLabel "fetchRowAL" testfetchRowAL,
+                  TestLabel "fetchRowMap" testfetchRowMap,
+                  TestLabel "fetchAllRowsAL" testfetchAllRowsAL,
+                  TestLabel "fetchAllRowsMap" testfetchAllRowsMap]
