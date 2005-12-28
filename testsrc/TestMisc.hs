@@ -17,14 +17,12 @@ alrows :: [[(String, SqlValue)]]
 alrows = map (zip colnames) rowdata
 
 setup f = dbTestCase $ \dbh ->
-   do dbh2 <- clone dbh
-      run dbh2 "CREATE TABLE hdbctest2 (testid INTEGER PRIMARY KEY NOT NULL, teststring TEXT, testint INTEGER)" []
-      sth <- prepare dbh2 "INSERT INTO hdbctest2 VALUES (?, ?, ?)"
+   do run dbh "CREATE TABLE hdbctest2 (testid INTEGER PRIMARY KEY NOT NULL, teststring TEXT, testint INTEGER)" []
+      sth <- prepare dbh "INSERT INTO hdbctest2 VALUES (?, ?, ?)"
       executeMany sth rowdata
-      commit dbh2
-      finally (f dbh2)
-              (do try (disconnect dbh2) 
-                  run dbh "DROP TABLE hdbctest2" []
+      commit dbh
+      finally (f dbh)
+              (do run dbh "DROP TABLE hdbctest2" []
                   commit dbh
               )
 
@@ -113,8 +111,8 @@ testnulls = setup $ \dbh ->
     do sth <- prepare dbh "INSERT INTO hdbctest2 VALUES (?, ?, ?)"
        executeMany sth rows
        finish sth
-       res <- quickQuery dbh "SELECT * from hdbctest2 ORDER BY testid" []
-       rows @=? res
+       res <- quickQuery dbh "SELECT * from hdbctest2 WHERE testid > 99 ORDER BY testid" []
+       seq (length res) rows @=? res
     where rows = [[SqlInt32 100, SqlString "foo\NULbar", SqlNull],
                   [SqlInt32 101, SqlString "bar\NUL", SqlNull],
                   [SqlInt32 102, SqlString "\NUL", SqlNull],
