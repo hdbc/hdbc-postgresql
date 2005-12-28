@@ -1,0 +1,20 @@
+Source: hdbc-postgresql
+Priority: optional
+Maintainer: John Goerzen <jgoerzen@complete.org>
+Build-Depends: debhelper (>= 4.0.0)
+Standards-Version: 3.6.2
+Section: libs
+
+Package: hdbc-postgresql-dev
+Section: libdevel
+Architecture: any
+Depends: hdbc-postgresqlBROKEN (= ${Source-Version})
+Description: <insert up to 60 chars description>
+ <insert long description, indented with spaces>
+
+Package: hdbc-postgresqlBROKEN
+Section: libs
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: <insert up to 60 chars description>
+ <insert long description, indented with spaces>
