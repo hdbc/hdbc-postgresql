@@ -99,7 +99,7 @@ fgetTables conn =
        let res = map fromSql $ concat res1
        return $ seq (length res) res
 
-fdisconnect conn = withRawConn pqfinish
+fdisconnect conn = withRawConn conn $ pqfinish
 
 foreign import ccall unsafe "libpq-fe.h PQconnectdb"
   pqconnectdb :: CString -> IO (Ptr CConn)
@@ -113,7 +113,7 @@ foreign import ccall unsafe "libpq-fe.h PQstatus"
 foreign import ccall unsafe "hdbc-postgresql-helper.h PQfinish_app"
   pqfinish :: Ptr WrappedCConn -> IO ()
 
-foreign import ccall unsafe "hdbc-postgresql-helper.h &PQfinish_fptr"
+foreign import ccall unsafe "hdbc-postgresql-helper.h &PQfinish_finalizer"
   pqfinishptr :: FunPtr (Ptr WrappedCConn -> IO ())
 
 foreign import ccall unsafe "libpq-fe.h PQprotocolVersion"

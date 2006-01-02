@@ -53,13 +53,13 @@ Ditto for statements. -}
 withConn :: Conn -> (Ptr CConn -> IO b) -> IO b
 withConn = genericUnwrap
 
-withRawConn :: Conn -> (Ptr CConn -> IO b) -> IO b
+withRawConn :: Conn -> (Ptr WrappedCConn -> IO b) -> IO b
 withRawConn = withForeignPtr
 
 withStmt :: Stmt -> (Ptr CStmt -> IO b) -> IO b
 withStmt = genericUnwrap
 
-withRawStmt :: Stmt -> (Ptr CStmt -> IO b) -> IO b
+withRawStmt :: Stmt -> (Ptr WrappedCStmt -> IO b) -> IO b
 withRawStmt = withForeignPtr
 
 withCStringArr0 :: [SqlValue] -> (Ptr CString -> IO a) -> IO a
@@ -82,10 +82,11 @@ withAnyArr0 input2ptract freeact inp action =
             (\clist -> withArray0 nullPtr clist action)
 
 
-genericUnwrap :: ForeignPtr a -> (Ptr a -> IO b) -> IO b
+genericUnwrap :: ForeignPtr (Ptr a) -> (Ptr a -> IO b) -> IO b
 genericUnwrap fptr action = withForeignPtr fptr (\structptr ->
     do objptr <- #{peek finalizeonce, encapobj} structptr
        action objptr
+                                                )
           
 foreign import ccall unsafe "libpq-fe.h PQerrorMessage"
   pqerrorMessage :: Ptr CConn -> IO CString

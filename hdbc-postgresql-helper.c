@@ -36,7 +36,7 @@ void PQfinish_finalizer(finalizeonce *conn) {
 void PQclear_app(finalizeonce *res) {
   if (res->isfinalized)
     return;
-  PQclear((PGres *) (res->encapobj));
+  PQclear((PGresult *) (res->encapobj));
   res->isfinalized = 1;
 }
 

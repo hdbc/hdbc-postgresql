@@ -76,7 +76,7 @@ newSth indbo query =
 
 {- For now, we try to just  handle things as simply as possible.
 FIXME lots of room for improvement here (types, etc). -}
-fexecute sstate args = withForeignPtr (dbo sstate) $ \cconn ->
+fexecute sstate args = withConn (dbo sstate) $ \cconn ->
                        withCString (squery sstate) $ \cquery ->
                        withCStringArr0 args $ \cargs ->
     do l "in fexecute"
@@ -104,7 +104,7 @@ fexecute sstate args = withForeignPtr (dbo sstate) $ \cconn ->
                 fgetcolnames resptr >>= swapMVar (colnamemv sstate) 
                 numrows <- pqntuples resptr
                 if numrows < 1
-                   then do pqclear resptr
+                   then do pqclear_raw resptr
                            return 0
                    else do 
                         wrappedptr <- wrapstmt resptr
@@ -173,7 +173,7 @@ public_ffinish sstate =
           worker (Just sth) = ffinish sth >> return Nothing
 
 ffinish :: Stmt -> IO ()
-ffinish p = withRawStmt pqclear
+ffinish p = withRawStmt p $ pqclear
 
 foreign import ccall unsafe "libpq-fe.h PQresultStatus"
   pqresultStatus :: (Ptr CStmt) -> IO #{type ExecStatusType}
