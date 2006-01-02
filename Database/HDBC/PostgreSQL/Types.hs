@@ -4,8 +4,10 @@ where
 import Foreign.ForeignPtr
 
 data CConn = CConn
-type Conn = ForeignPtr CConn
+data WrappedCConn = Ptr CConn
+type Conn = ForeignPtr WrappedCConn
 
 data CStmt = CStmt
-type Stmt = ForeignPtr CStmt
+data WrappedCStmt = Ptr CStmr
+type Stmt = ForeignPtr WrappedCStmt
 

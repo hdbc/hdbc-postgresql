@@ -29,6 +29,8 @@ import Foreign.Marshal.Array
 import Foreign.Marshal.Alloc
 import Data.Word
 
+#include "hdbc-postgresql-helper.h"
+
 raiseError :: String -> Word32 -> (Ptr CConn) -> IO a
 raiseError msg code cconn =
     do rc <- pqerrorMessage cconn
@@ -37,11 +39,28 @@ raiseError msg code cconn =
                             seNativeError = fromIntegral code,
                             seErrorMsg = msg ++ ": " ++ str}
 
+{- This is a little hairy.
+
+We have a Conn object that is actually a finalizeonce wrapper around
+the real object.  We use withConn to dereference the foreign pointer,
+and then extract the pointer to the real object from the finalizeonce struct.
+
+But, when we close the connection, we need the finalizeonce struct, so that's
+done by withRawConn.
+
+Ditto for statements. -}
+
 withConn :: Conn -> (Ptr CConn -> IO b) -> IO b
-withConn = withForeignPtr
+withConn = genericUnwrap
+
+withRawConn :: Conn -> (Ptr CConn -> IO b) -> IO b
+withRawConn = withForeignPtr
 
 withStmt :: Stmt -> (Ptr CStmt -> IO b) -> IO b
-withStmt = withForeignPtr
+withStmt = genericUnwrap
+
+withRawStmt :: Stmt -> (Ptr CStmt -> IO b) -> IO b
+withRawStmt = withForeignPtr
 
 withCStringArr0 :: [SqlValue] -> (Ptr CString -> IO a) -> IO a
 withCStringArr0 inp action = withAnyArr0 convfunc freefunc inp action
@@ -62,6 +81,12 @@ withAnyArr0 input2ptract freeact inp action =
             (\clist -> mapM_ freeact clist)
             (\clist -> withArray0 nullPtr clist action)
 
+
+genericUnwrap :: ForeignPtr a -> (Ptr a -> IO b) -> IO b
+genericUnwrap fptr action = withForeignPtr fptr (\structptr ->
+    do objptr <- #{peek finalizeonce, encapobj} structptr
+       action objptr
+          
 foreign import ccall unsafe "libpq-fe.h PQerrorMessage"
   pqerrorMessage :: Ptr CConn -> IO CString
 

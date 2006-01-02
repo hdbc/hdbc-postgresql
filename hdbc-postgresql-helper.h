@@ -5,7 +5,7 @@ typedef struct TAG_finalizeonce {
   int isfinalized;
 } finalizeonce;
 
-extern int *PQhugs_alloc_env();
+extern finalizeonce *wrapobj(void *obj);
 
 extern void PQfinish_app(finalizeonce *conn);
 extern void PQfinish_finalizer(finalizeonce *conn);
