@@ -1,4 +1,6 @@
 Extra-Libraries: pq
+include-dirs: /usr/include/postgresql, .
+-- extra-lib-dirs: 
 Name: HDBC-postgresql
 Version: 0.99.0.0
 License: LGPL
@@ -16,5 +18,4 @@ Other-Modules: Database.HDBC.PostgreSQL.Connection,
 Extensions: ExistentialQuantification
 Build-Depends: base, mtl, HDBC>=0.99.0, parsec
 GHC-Options: -O2
-include-dirs: /usr/include/postgresql, .
 C-Sources: hdbc-postgresql-helper.c

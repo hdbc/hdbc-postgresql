@@ -38,13 +38,18 @@ INSTALLATION
 
 The steps to install are:
 
-1) ghc --make -o setup Setup.lhs
+1) Examine HDBC-postgresql.cabal and edit the include-dirs
+   line to point to your local PostgreSQL installation.  If necessary,
+   uncomment and edit the extra-lib-dirs line to point to your
+   local PostgreSQL installation.
 
-2) ./setup configure
+2) ghc --make -o setup Setup.lhs
 
-3) ./setup build
+3) ./setup configure
 
-4) ./setup install   (as root)
+4) ./setup build
+
+5) ./setup install   (as root)
 
 If you're on Windows, you can omit the leading "./".
 
