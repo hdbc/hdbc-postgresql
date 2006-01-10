@@ -110,7 +110,7 @@ testclone = setup $ \dbho -> cloneTest dbho $ \dbh ->
 
 testnulls = setup $ \dbh ->
     do let dn = hdbcDriverName dbh
-       when (not (dn `elem` ["postgresql"])) (
+       when (not (dn `elem` ["postgresql", "odbc"])) (
           do sth <- prepare dbh "INSERT INTO hdbctest2 VALUES (?, ?, ?)"
              executeMany sth rows
              finish sth
