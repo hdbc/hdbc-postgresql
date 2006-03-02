@@ -23,6 +23,7 @@ module Database.HDBC.PostgreSQL.Connection (connectPostgreSQL) where
 
 import Database.HDBC.Types
 import Database.HDBC
+import Database.HDBC.DriverUtils
 import Database.HDBC.PostgreSQL.Types
 import Database.HDBC.PostgreSQL.Statement
 import Foreign.C.Types
@@ -33,6 +34,7 @@ import Database.HDBC.PostgreSQL.Utils
 import Foreign.ForeignPtr
 import Foreign.Ptr
 import Data.Word
+import Control.Concurrent.MVar
 
 #include <libpq-fe.h>
 #include <pg_config.h>
@@ -45,7 +47,7 @@ connectPostgreSQL :: String -> IO Connection
 connectPostgreSQL args = withCString args $
   \cs -> do ptr <- pqconnectdb cs
             status <- pqstatus ptr
-            wrappedptr <- wrapconn ptr
+            wrappedptr <- wrapconn ptr nullPtr
             fptr <- newForeignPtr pqfinishptr wrappedptr
             case status of
                      #{const CONNECTION_OK} -> mkConn args fptr
@@ -56,56 +58,59 @@ connectPostgreSQL args = withCString args $
 mkConn :: String -> Conn -> IO Connection
 mkConn args conn = withConn conn $
   \cconn -> 
-    do begin_transaction conn
+    do children <- newMVar []
+       begin_transaction conn children
        protover <- pqprotocolVersion cconn
        serverver <- pqserverVersion cconn
        let clientver = #{const_str PG_VERSION}
        return $ Connection {
-                            disconnect = fdisconnect conn,
-                            commit = fcommit conn,
-                            rollback = frollback conn,
-                            run = frun conn,
-                            prepare = newSth conn,
+                            disconnect = fdisconnect conn children,
+                            commit = fcommit conn children,
+                            rollback = frollback conn children,
+                            run = frun conn children,
+                            prepare = newSth conn children,
                             clone = connectPostgreSQL args,
                             hdbcDriverName = "postgresql",
                             hdbcClientVer = clientver,
                             proxiedClientName = "postgresql",
                             proxiedClientVer = show protover,
                             dbServerVer = show serverver,
-                            getTables = fgetTables conn}
+                            getTables = fgetTables conn children}
 
 --------------------------------------------------
 -- Guts here
 --------------------------------------------------
 
-begin_transaction :: Conn -> IO ()
-begin_transaction o = frun o "BEGIN" [] >> return ()
+begin_transaction :: Conn -> ChildList -> IO ()
+begin_transaction o children = frun o children "BEGIN" [] >> return ()
 
-frun o query args =
-    do sth <- newSth o query
+frun o children query args =
+    do sth <- newSth o children query
        res <- execute sth args
        finish sth
        return res
 
-fcommit o = do frun o "COMMIT" []
-               begin_transaction o
-frollback o =  do frun o "ROLLBACK" []
-                  begin_transaction o
+fcommit o cl = do frun o cl "COMMIT" []
+                  begin_transaction o cl
+frollback o cl =  do frun o cl "ROLLBACK" []
+                     begin_transaction o cl
 
-fgetTables conn =
-    do sth <- newSth conn "select table_name from information_schema.tables where table_schema = 'public'"
+fgetTables conn children =
+    do sth <- newSth conn children "select table_name from information_schema.tables where table_schema = 'public'"
        execute sth []
        res1 <- fetchAllRows sth
        let res = map fromSql $ concat res1
        return $ seq (length res) res
 
-fdisconnect conn = withRawConn conn $ pqfinish
+fdisconnect conn mchildren = 
+    do closeAllChildren mchildren
+       withRawConn conn $ pqfinish
 
 foreign import ccall unsafe "libpq-fe.h PQconnectdb"
   pqconnectdb :: CString -> IO (Ptr CConn)
 
 foreign import ccall unsafe "hdbc-postgresql-helper.h wrapobj"
-  wrapconn :: Ptr CConn -> IO (Ptr WrappedCConn)
+  wrapconn :: Ptr CConn -> Ptr WrappedCConn -> IO (Ptr WrappedCConn)
 
 foreign import ccall unsafe "libpq-fe.h PQstatus"
   pqstatus :: Ptr CConn -> IO #{type ConnStatusType}

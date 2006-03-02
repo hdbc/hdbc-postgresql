@@ -36,6 +36,7 @@ import Data.Word
 import Control.Exception
 import System.IO
 import Database.HDBC.PostgreSQL.Parser(convertSQL)
+import Database.HDBC.DriverUtils
 
 l _ = return ()
 --l m = hPutStrLn stderr ("\n" ++ m)
@@ -51,8 +52,8 @@ data SState =
 
 -- FIXME: we currently do no prepare optimization whatsoever.
 
-newSth :: Conn -> String -> IO Statement               
-newSth indbo query = 
+newSth :: Conn -> ChildList -> String -> IO Statement               
+newSth indbo mchildren query = 
     do l "in newSth"
        newstomv <- newMVar Nothing
        newnextrowmv <- newMVar (-1)
@@ -67,12 +68,15 @@ newSth indbo query =
        let sstate = SState {stomv = newstomv, nextrowmv = newnextrowmv,
                             dbo = indbo, squery = usequery,
                             colnamemv = newcolnamemv}
-       return $ Statement {execute = fexecute sstate,
+       let retval = 
+                Statement {execute = fexecute sstate,
                            executeMany = fexecutemany sstate,
                            finish = public_ffinish sstate,
                            fetchRow = ffetchrow sstate,
                            originalQuery = query,
                            getColumnNames = readMVar (colnamemv sstate)}
+       addChild mchildren retval
+       return retval
 
 {- For now, we try to just  handle things as simply as possible.
 FIXME lots of room for improvement here (types, etc). -}
@@ -107,7 +111,8 @@ fexecute sstate args = withConn (dbo sstate) $ \cconn ->
                    then do pqclear_raw resptr
                            return 0
                    else do 
-                        wrappedptr <- wrapstmt resptr
+                        wrappedptr <- withRawConn (dbo sstate) 
+                                      (\rawconn -> wrapstmt resptr rawconn)
                         fresptr <- newForeignPtr pqclearptr wrappedptr
                         swapMVar (nextrowmv sstate) 0
                         swapMVar (stomv sstate) (Just fresptr)
@@ -197,7 +202,7 @@ foreign import ccall unsafe "libpq-fe.h PQclear"
   pqclear_raw :: Ptr CStmt -> IO ()
 
 foreign import ccall unsafe "hdbc-postgresql-helper.h wrapobj"
-  wrapstmt :: Ptr CStmt -> IO (Ptr WrappedCStmt)
+  wrapstmt :: Ptr CStmt -> Ptr WrappedCConn -> IO (Ptr WrappedCStmt)
 
 foreign import ccall unsafe "libpq-fe.h PQcmdTuples"
   pqcmdTuples :: Ptr CStmt -> IO CString
