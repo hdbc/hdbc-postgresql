@@ -9,8 +9,6 @@
 #ifndef __PGTYPES_H__
 #define __PGTYPES_H__
 
-#include "psqlodbc.h"
-
 /* the type numbers are defined by the OID's of the types' rows */
 /* in table pg_type */
 
@@ -65,45 +63,4 @@
 #define PG_TYPE_NUMERIC			1700
 #define INTERNAL_ASIS_TYPE		(-9999)
 
-/* extern Int4 pgtypes_defined[]; */
-extern Int2 sqlTypes[];
-
-/*	Defines for pgtype_precision */
-#define PG_STATIC				(-1)
-
-Int4		sqltype_to_pgtype(StatementClass *stmt, Int2 fSqlType);
-
-Int2		pgtype_to_concise_type(StatementClass *stmt, Int4 type, int col);
-Int2		pgtype_to_sqldesctype(StatementClass *stmt, Int4 type, int col);
-Int2		pgtype_to_datetime_sub(StatementClass *stmt, Int4 type);
-Int2		pgtype_to_ctype(StatementClass *stmt, Int4 type);
-const char	*pgtype_to_name(StatementClass *stmt, Int4 type);
-
-/*	These functions can use static numbers or result sets(col parameter) */
-Int4		pgtype_column_size(StatementClass *stmt, Int4 type, int col, int handle_unknown_size_as); /* corresponds to "precision" in ODBC 2.x */
-Int4		pgtype_precision(StatementClass *stmt, Int4 type, int col, int handle_unknown_size_as); /* "precsion in ODBC 3.x */ 
-Int4		pgtype_display_size(StatementClass *stmt, Int4 type, int col, int handle_unknown_size_as);
-Int4		pgtype_buffer_length(StatementClass *stmt, Int4 type, int col, int handle_unknown_size_as);
-Int4		pgtype_desclength(StatementClass *stmt, Int4 type, int col, int handle_unknown_size_as);
-Int4		pgtype_transfer_octet_length(StatementClass *stmt, Int4 type, int col, int handle_unknown_size_as);
-
-Int2		pgtype_decimal_digits(StatementClass *stmt, Int4 type, int col); /* corresponds to "scale" in ODBC 2.x */
-Int2		pgtype_min_decimal_digits(StatementClass *stmt, Int4 type); /* corresponds to "min_scale" in ODBC 2.x */
-Int2		pgtype_max_decimal_digits(StatementClass *stmt, Int4 type); /* corresponds to "max_scale" in ODBC 2.x */
-Int2		pgtype_scale(StatementClass *stmt, Int4 type, int col); /* ODBC 3.x " */
-Int2		pgtype_radix(StatementClass *stmt, Int4 type);
-Int2		pgtype_nullable(StatementClass *stmt, Int4 type);
-Int2		pgtype_auto_increment(StatementClass *stmt, Int4 type);
-Int2		pgtype_case_sensitive(StatementClass *stmt, Int4 type);
-Int2		pgtype_money(StatementClass *stmt, Int4 type);
-Int2		pgtype_searchable(StatementClass *stmt, Int4 type);
-Int2		pgtype_unsigned(StatementClass *stmt, Int4 type);
-char	   *pgtype_literal_prefix(StatementClass *stmt, Int4 type);
-char	   *pgtype_literal_suffix(StatementClass *stmt, Int4 type);
-char	   *pgtype_create_params(StatementClass *stmt, Int4 type);
-
-Int2		sqltype_to_default_ctype(const ConnectionClass *stmt, Int2 sqltype);
-Int4		ctype_length(Int2 ctype);
-
-#define	USE_ZONE	FALSE
 #endif
