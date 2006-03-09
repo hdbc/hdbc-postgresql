@@ -37,6 +37,7 @@ import Control.Exception
 import System.IO
 import Database.HDBC.PostgreSQL.Parser(convertSQL)
 import Database.HDBC.DriverUtils
+import Database.HDBC.PostgreSQL.PTypeConv
 
 l _ = return ()
 --l m = hPutStrLn stderr ("\n" ++ m)
@@ -48,7 +49,7 @@ data SState =
              nextrowmv :: MVar (CInt), -- -1 for no next row (empty); otherwise, next row to read.
              dbo :: Conn,
              squery :: String,
-             colnamemv :: MVar [String]}
+             coldefmv :: MVar [(String, SqlColDef)]}
 
 -- FIXME: we currently do no prepare optimization whatsoever.
 
@@ -57,7 +58,7 @@ newSth indbo mchildren query =
     do l "in newSth"
        newstomv <- newMVar Nothing
        newnextrowmv <- newMVar (-1)
-       newcolnamemv <- newMVar []
+       newcoldefmv <- newMVar []
        usequery <- case convertSQL query of
                       Left errstr -> throwDyn $ SqlError
                                       {seState = "",
@@ -67,14 +68,14 @@ newSth indbo mchildren query =
                       Right converted -> return converted
        let sstate = SState {stomv = newstomv, nextrowmv = newnextrowmv,
                             dbo = indbo, squery = usequery,
-                            colnamemv = newcolnamemv}
+                            coldefmv = newcoldefmv}
        let retval = 
                 Statement {execute = fexecute sstate,
                            executeMany = fexecutemany sstate,
                            finish = public_ffinish sstate,
                            fetchRow = ffetchrow sstate,
                            originalQuery = query,
-                           getColumnNames = readMVar (colnamemv sstate)}
+                           getColumnNames = readMVar (coldefmv sstate)}
        addChild mchildren retval
        return retval
 
@@ -92,20 +93,20 @@ fexecute sstate args = withConn (dbo sstate) $ \cconn ->
          #{const PGRES_EMPTY_QUERY} ->
              do l $ "PGRES_EMPTY_QUERY: " ++ squery sstate
                 pqclear_raw resptr
-                swapMVar (colnamemv sstate) []
+                swapMVar (coldefmv sstate) []
                 return 0
          #{const PGRES_COMMAND_OK} ->
              do l $ "PGRES_COMMAND_OK: " ++ squery sstate
                 rowscs <- pqcmdTuples resptr
                 rows <- peekCString rowscs
                 pqclear_raw resptr
-                swapMVar (colnamemv sstate) []
+                swapMVar (coldefmv sstate) []
                 return $ case rows of
                                    "" -> 0
                                    x -> read x
          #{const PGRES_TUPLES_OK} -> 
              do l $ "PGRES_TUPLES_OK: " ++ squery sstate
-                fgetcolnames resptr >>= swapMVar (colnamemv sstate) 
+                fgetcoldef resptr >>= swapMVar (coldefmv sstate) 
                 numrows <- pqntuples resptr
                 if numrows < 1
                    then do pqclear_raw resptr
@@ -163,6 +164,16 @@ ffetchrow sstate = modifyMVar (nextrowmv sstate) dofetchrow
 fgetcolnames cstmt =
     do ncols <- pqnfields cstmt
        mapM (\i -> pqfname cstmt i >>= peekCString) [0..(ncols - 1)]
+
+fgetcoldef cstmt =
+    do ncols <- pqnfields cstmt
+       mapM desccol [0..(ncols - 1)]
+    where desccol i =
+              do colname <- (pqfname cstmt i >>= peekCString)
+                 coltype <- pqftype cstmt i
+                 --coloctets <- pqfsize
+                 let coltype = oidToColDef coltype
+                 return (colname, coltype)
 
 -- FIXME: needs a faster algorithm.
 fexecutemany :: SState -> [[SqlValue]] -> IO ()
