@@ -46,9 +46,11 @@ testdescribeResult = setup $ \dbh -> when (not ((hdbcDriverName dbh) `elem`
       cols <- describeResult sth
       ["testid", "teststring", "testint"] @=? map (map toLower . fst) cols
       let coldata = map snd cols
-      assertEqual "r0 type" SqlBigIntT (colType (coldata !! 0))
+      assertBool "r0 type" (colType (coldata !! 0) `elem`
+                            [SqlBigIntT, SqlIntegerT])
       assertEqual "r1 type" SqlVarCharT (colType (coldata !! 1))
-      assertEqual "r2 type" SqlBigIntT (colType (coldata !! 2))
+      assertBool "r2 type" (colType (coldata !! 2) `elem`
+                            [SqlBigIntT, SqlIntegerT])
       finish sth
 
 testdescribeTable = setup $ \dbh -> when (not ((hdbcDriverName dbh) `elem`
@@ -56,11 +58,14 @@ testdescribeTable = setup $ \dbh -> when (not ((hdbcDriverName dbh) `elem`
    do cols <- describeTable dbh "hdbctest2"
       ["testid", "teststring", "testint"] @=? map (map toLower . fst) cols
       let coldata = map snd cols
-      assertEqual "r0 type" SqlBigIntT (colType (coldata !! 0))
+      assertBool "r0 type" (colType (coldata !! 0) `elem`
+                            [SqlBigIntT, SqlIntegerT])
       assertEqual "r0 nullable" (Just False) (colNullable (coldata !! 0))
-      assertEqual "r1 type" SqlVarCharT (colType (coldata !! 1))
+      assertBool "r1 type" (colType (coldata !! 1) `elem`
+                            [SqlVarCharT, SqlLongVarCharT])
       assertEqual "r1 nullable" (Just True) (colNullable (coldata !! 1))
-      assertEqual "r2 type" SqlBigIntT (colType (coldata !! 2))
+      assertBool "r2 type" (colType (coldata !! 2) `elem`
+                           [SqlBigIntT, SqlIntegerT])
       assertEqual "r2 nullable" (Just True) (colNullable (coldata !! 2))
 
 testquickQuery = setup $ \dbh ->
