@@ -119,6 +119,8 @@ fdescribeTable o cl table =
                       coldef {colSize = Just (fromSql attlen),
                               colNullable = Just ((fromSql attnotnull) == 'f')}
                      )
+          desccol x =
+              error $ "Got unexpected result from pg_attribute: " ++ show x
 
 fdisconnect conn mchildren = 
     do closeAllChildren mchildren
