@@ -32,8 +32,7 @@ cloneTest dbh a =
        finally (handleSqlError (a dbh2))
                (handleSqlError (disconnect dbh2))
 
-testgetColumnNames = setup $ \dbh -> when (not ((hdbcDriverName dbh) `elem`
-                                               ["sqlite3"])) $
+testgetColumnNames = setup $ \dbh ->
    do sth <- prepare dbh "SELECT * from hdbctest2"
       execute sth []
       cols <- getColumnNames sth
@@ -52,7 +51,8 @@ testdescribeResult = setup $ \dbh -> when (not ((hdbcDriverName dbh) `elem`
       assertEqual "r2 type" SqlBigIntT (colType (coldata !! 2))
       finish sth
 
-testdescribeTable = setup $ \dbh ->
+testdescribeTable = setup $ \dbh -> when (not ((hdbcDriverName dbh) `elem`
+                                               ["sqlite3"])) $
    do cols <- describeTable dbh "hdbctest2"
       ["testid", "teststring", "testint"] @=? map (map toLower . fst) cols
       let coldata = map snd cols
