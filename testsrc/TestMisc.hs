@@ -48,7 +48,8 @@ testdescribeResult = setup $ \dbh -> when (not ((hdbcDriverName dbh) `elem`
       let coldata = map snd cols
       assertBool "r0 type" (colType (coldata !! 0) `elem`
                             [SqlBigIntT, SqlIntegerT])
-      assertEqual "r1 type" SqlVarCharT (colType (coldata !! 1))
+      assertBool "r1 type" (colType (coldata !! 1) `elem`
+                            [SqlVarCharT, SqlLongVarCharT])
       assertBool "r2 type" (colType (coldata !! 2) `elem`
                             [SqlBigIntT, SqlIntegerT])
       finish sth
