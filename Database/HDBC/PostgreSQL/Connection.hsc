@@ -117,7 +117,7 @@ fdescribeTable o cl table =
               let coldef = oidToColDef (fromSql atttypid)
                   in (fromSql attname,
                       coldef {colSize = Just (fromSql attlen),
-                              colNullable = Just ((fromSql attnotnull) == 't')}
+                              colNullable = Just ((fromSql attnotnull) == 'f')}
                      )
 
 fdisconnect conn mchildren = 
