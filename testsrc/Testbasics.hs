@@ -95,7 +95,8 @@ testFetchAllRows = dbTestCase (\dbh ->
     where rows = map (\x -> [iToSql x]) [1..9]
 
 basicTransactions = dbTestCase (\dbh ->
-    do sth <- prepare dbh "INSERT INTO hdbctest1 VALUES ('basicTransactions', ?, NULL, NULL)"
+    do assertBool "Connected database does not support transactions; skipping transaction test" (dbTransactionSupport dbh)
+       sth <- prepare dbh "INSERT INTO hdbctest1 VALUES ('basicTransactions', ?, NULL, NULL)"
        execute sth [iToSql 0]
        commit dbh
        qrysth <- prepare dbh "SELECT testid FROM hdbctest1 WHERE testname = 'basicTransactions' ORDER BY testid"
@@ -117,7 +118,8 @@ basicTransactions = dbTestCase (\dbh ->
     where rows = map (\x -> [iToSql $ x]) [1..9]
 
 testWithTransaction = dbTestCase (\dbh ->
-    do sth <- prepare dbh "INSERT INTO hdbctest1 VALUES ('withTransaction', ?, NULL, NULL)"
+    do assertBool "Connected database does not support transactions; skipping transaction test" (dbTransactionSupport dbh)
+       sth <- prepare dbh "INSERT INTO hdbctest1 VALUES ('withTransaction', ?, NULL, NULL)"
        execute sth [toSql "0"]
        commit dbh
        qrysth <- prepare dbh "SELECT testid FROM hdbctest1 WHERE testname = 'withTransaction' ORDER BY testid"
