@@ -75,13 +75,17 @@ newSth indbo mchildren query =
                            finish = public_ffinish sstate,
                            fetchRow = ffetchrow sstate,
                            originalQuery = query,
-                           getColumnNames = fgetColumnNames sstate}
+                           getColumnNames = fgetColumnNames sstate,
+                           describeResult = fdescribeResult sstate}
        addChild mchildren retval
        return retval
 
 fgetColumnNames sstate = 
     do c <- readMVar (coldefmv sstate)
        return (map fst c)
+
+fdescribeResult sstate = 
+    readMVar (coldefmv sstate)
 
 {- For now, we try to just  handle things as simply as possible.
 FIXME lots of room for improvement here (types, etc). -}
