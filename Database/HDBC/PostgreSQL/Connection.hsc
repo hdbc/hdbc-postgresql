@@ -2,7 +2,7 @@
 {-# CFILES hdbc-postgresql-helper.c #-}
 -- Above line for hugs
 {-
-Copyright (C) 2005 John Goerzen <jgoerzen@complete.org>
+Copyright (C) 2005-2006 John Goerzen <jgoerzen@complete.org>
 
     This library is free software; you can redistribute it and/or
     modify it under the terms of the GNU Lesser General Public
@@ -76,6 +76,7 @@ mkConn args conn = withConn conn $
                             proxiedClientName = "postgresql",
                             proxiedClientVer = show protover,
                             dbServerVer = show serverver,
+                            dbTransactionSupport = True,
                             getTables = fgetTables conn children,
                             describeTable = fdescribeTable conn children}
 

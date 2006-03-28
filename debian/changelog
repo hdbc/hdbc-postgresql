@@ -1,3 +1,9 @@
+hdbc-postgresql (0.99.2.0) unstable; urgency=low
+
+  * Updated for 0.99.2.
+
+ -- John Goerzen <jgoerzen@complete.org>  Tue, 28 Mar 2006 05:33:19 -0600
+
 hdbc-postgresql (0.99.1.0) unstable; urgency=low
 
   * Releasing 0.99.1.0, with new memory management and column type
