@@ -26,6 +26,7 @@ import Database.HDBC
 import Database.HDBC.DriverUtils
 import Database.HDBC.PostgreSQL.Types
 import Database.HDBC.PostgreSQL.Statement
+import Database.HDBC.PostgreSQL.PTypeConv
 import Foreign.C.Types
 import Foreign.C.String
 import Foreign.Marshal
@@ -75,7 +76,8 @@ mkConn args conn = withConn conn $
                             proxiedClientName = "postgresql",
                             proxiedClientVer = show protover,
                             dbServerVer = show serverver,
-                            getTables = fgetTables conn children}
+                            getTables = fgetTables conn children,
+                            describeTable = fdescribeTable conn children}
 
 --------------------------------------------------
 -- Guts here
@@ -101,6 +103,22 @@ fgetTables conn children =
        res1 <- fetchAllRows sth
        let res = map fromSql $ concat res1
        return $ seq (length res) res
+
+fdescribeTable o cl table =
+    do sth <- newSth o cl 
+              ("select attname, atttypid, attlen, attnum, attnotnull " ++
+               "from pg_attribute, pg_class " ++
+               "where relname = ? and attnum > 0 and " ++
+               "attrelid = pg_class.oid order by attnum")
+       execute sth [SqlString table]
+       res <- fetchAllRows sth
+       return $ map desccol res
+    where desccol [attname, atttypid, attlen, attnum, attnotnull] =
+              let coldef = oidToColDef (fromSql atttypid)
+                  in (fromSql attname,
+                      coldef {colSize = Just (fromSql attlen),
+                              colNullable = Just ((fromSql attnotnull) == 't')}
+                     )
 
 fdisconnect conn mchildren = 
     do closeAllChildren mchildren
