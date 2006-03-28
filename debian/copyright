@@ -26,3 +26,24 @@ Copyright (C) 2005, 2006 John Goerzen <jgoerzen@complete.org>
 
 On Debian systems, the complete text of the GNU Lesser General
 Public License can be found in `/usr/share/common-licenses/LGPL'.
+
+------------------------------------------------------------------
+
+pgtypes.h comes from the psqlodbc distribution, which bears this
+copyright:
+
+    Copyright (C) 1998          Insight Distribution Systems
+    Copyright (C) 1998 - 2005   The PostgreSQL Global Development Group
+
+    Multibyte support was added by Sankyo Unyu Service, (C) 2001.
+
+    The code contained in this library is based on code written by
+    Christian Czezatke and Dan McGuirk, (C) 1996.
+
+    This library is free software; you can redistribute it and/or modify
+    it under the terms of the GNU Library General Public License as
+    published by the Free Software Foundation; either version 2 of the
+    License, or (at your option) any later version.
+
+Most of pgtypes.h was removed by John Goerzen since it was not
+relevant for this task.
