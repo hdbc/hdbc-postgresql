@@ -49,7 +49,7 @@ data SState =
              nextrowmv :: MVar (CInt), -- -1 for no next row (empty); otherwise, next row to read.
              dbo :: Conn,
              squery :: String,
-             coldefmv :: MVar [(String, SqlColDef)]}
+             coldefmv :: MVar [(String, SqlColDesc)]}
 
 -- FIXME: we currently do no prepare optimization whatsoever.
 
@@ -75,9 +75,13 @@ newSth indbo mchildren query =
                            finish = public_ffinish sstate,
                            fetchRow = ffetchrow sstate,
                            originalQuery = query,
-                           getColumnNames = readMVar (coldefmv sstate)}
+                           getColumnNames = fgetColumnNames sstate}
        addChild mchildren retval
        return retval
+
+fgetColumnNames sstate = 
+    do c <- readMVar (coldefmv sstate)
+       return (map fst c)
 
 {- For now, we try to just  handle things as simply as possible.
 FIXME lots of room for improvement here (types, etc). -}
@@ -172,8 +176,8 @@ fgetcoldef cstmt =
               do colname <- (pqfname cstmt i >>= peekCString)
                  coltype <- pqftype cstmt i
                  --coloctets <- pqfsize
-                 let coltype = oidToColDef coltype
-                 return (colname, coltype)
+                 let coldef = oidToColDef coltype
+                 return (colname, coldef)
 
 -- FIXME: needs a faster algorithm.
 fexecutemany :: SState -> [[SqlValue]] -> IO ()
@@ -237,3 +241,6 @@ foreign import ccall unsafe "libpq-fe.h PQgetvalue"
 
 foreign import ccall unsafe "libpq-fe.h PQfname"
   pqfname :: Ptr CStmt -> CInt -> IO CString
+
+foreign import ccall unsafe "libpq-fe.h PQftype"
+  pqftype :: Ptr CStmt -> CInt -> IO #{type Oid}
