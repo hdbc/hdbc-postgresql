@@ -43,7 +43,7 @@ testdescribeResult = setup $ \dbh ->
    do sth <- prepare dbh "SELECT * from hdbctest2"
       execute sth []
       cols <- describeResult sth
-      ["testid", "teststring", "testint"] @=? map (map (toLower . fst)) cols
+      ["testid", "teststring", "testint"] @=? map (map toLower . fst) cols
       let coldata = map snd cols
       assertEqual "r0 type" SqlIntegerT (colType (coldata !! 0))
       assertEqual "r0 nullable" (Just False) (colNullable (coldata !! 0))
