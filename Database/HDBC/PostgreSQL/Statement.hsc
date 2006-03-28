@@ -165,10 +165,6 @@ ffetchrow sstate = modifyMVar (nextrowmv sstate) dofetchrow
                            s <- peekCString text
                            return (SqlString s)
 
-fgetcolnames cstmt =
-    do ncols <- pqnfields cstmt
-       mapM (\i -> pqfname cstmt i >>= peekCString) [0..(ncols - 1)]
-
 fgetcoldef cstmt =
     do ncols <- pqnfields cstmt
        mapM desccol [0..(ncols - 1)]
