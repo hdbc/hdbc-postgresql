@@ -39,6 +39,20 @@ testgetColumnNames = setup $ \dbh ->
       finish sth
       ["testid", "teststring", "testint"] @=? map (map toLower) cols
 
+testdescribeResult = setup $ \dbh ->
+   do sth <- prepare dbh "SELECT * from hdbctest2"
+      execute sth []
+      cols <- describeResult sth
+      ["testid", "teststring", "testint"] @=? map (map (toLower . fst)) cols
+      let coldata = map snd cols
+      assertEqual "r0 type" SqlIntegerT (colType (coldata !! 0))
+      assertEqual "r0 nullable" (Just False) (colNullable (coldata !! 0))
+      assertEqual "r1 type" SqlVarCharT (colType coldata !! 1))
+      assertEqual "r1 nullable" (Just True) (colNullable (coldata !! 1))
+      assertEqual "r2 type" SqlIntegerT (colType (coldata !! 2))
+      assertEqual "r2 nullable" (Just True) (colNullable (coldata !! 2))
+      finish sth
+
 testquickQuery = setup $ \dbh ->
     do results <- quickQuery dbh "SELECT * from hdbctest2 ORDER BY testid" []
        rowdata @=? results
@@ -125,6 +139,7 @@ testnulls = setup $ \dbh ->
        
 
 tests = TestList [TestLabel "getColumnNames" testgetColumnNames,
+                  TestLabel "describeResult" testdescribeResult,
                   TestLabel "quickQuery" testquickQuery,
                   TestLabel "fetchRowAL" testfetchRowAL,
                   TestLabel "fetchRowMap" testfetchRowMap,
