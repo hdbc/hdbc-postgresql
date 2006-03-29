@@ -216,7 +216,7 @@ foreign import ccall unsafe "hdbc-postgresql-helper.h &PQclear_finalizer"
 foreign import ccall unsafe "libpq-fe.h PQclear"
   pqclear_raw :: Ptr CStmt -> IO ()
 
-foreign import ccall unsafe "hdbc-postgresql-helper.h wrapobj"
+foreign import ccall unsafe "hdbc-postgresql-helper.h wrapobjpg"
   wrapstmt :: Ptr CStmt -> Ptr WrappedCConn -> IO (Ptr WrappedCStmt)
 
 foreign import ccall unsafe "libpq-fe.h PQcmdTuples"

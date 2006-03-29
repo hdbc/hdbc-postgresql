@@ -130,7 +130,7 @@ fdisconnect conn mchildren =
 foreign import ccall unsafe "libpq-fe.h PQconnectdb"
   pqconnectdb :: CString -> IO (Ptr CConn)
 
-foreign import ccall unsafe "hdbc-postgresql-helper.h wrapobj"
+foreign import ccall unsafe "hdbc-postgresql-helper.h wrapobjpg"
   wrapconn :: Ptr CConn -> Ptr WrappedCConn -> IO (Ptr WrappedCConn)
 
 foreign import ccall unsafe "libpq-fe.h PQstatus"

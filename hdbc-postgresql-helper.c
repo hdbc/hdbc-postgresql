@@ -11,7 +11,7 @@ So, here's a little wrapper for things. */
 
 void PQfinish_conditional_finalizer(finalizeonce *conn);
 
-finalizeonce *wrapobj(void *obj, finalizeonce *parentobj) {
+finalizeonce *wrapobjpg(void *obj, finalizeonce *parentobj) {
   finalizeonce *newobj;
   newobj = malloc(sizeof(finalizeonce));
   if (newobj == NULL) {

@@ -7,7 +7,7 @@ typedef struct TAG_finalizeonce {
   struct TAG_finalizeonce *parent;
 } finalizeonce;
 
-extern finalizeonce *wrapobj(void *obj, finalizeonce *parentobj);
+extern finalizeonce *wrapobjpg(void *obj, finalizeonce *parentobj);
 
 extern void PQfinish_app(finalizeonce *conn);
 extern void PQfinish_finalizer(finalizeonce *conn);
