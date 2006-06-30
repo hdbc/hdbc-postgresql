@@ -1,3 +1,10 @@
+hdbc-postgresql (1.0.0.0) unstable; urgency=low
+
+  * Blessing this version as 1.0.0.0
+  * Rebuilt with ghc6 6.4.2 for Debian
+
+ -- John Goerzen <jgoerzen@complete.org>  Thu, 29 Jun 2006 19:01:02 -0500
+
 hdbc-postgresql (0.99.2.1) unstable; urgency=low
 
   * Give wrapobj a unique name so that this module can coexist with ODBC
