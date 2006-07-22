@@ -117,7 +117,9 @@ fdescribeTable o cl table =
     where desccol [attname, atttypid, attlen, attnum, attnotnull] =
               let coldef = oidToColDef (fromSql atttypid)
                   in (fromSql attname,
-                      coldef {colSize = Just (fromSql attlen),
+                      coldef {colSize = case fromSql attlen of
+                                          -1 -> Nothing
+                                          x -> Just x,
                               colNullable = Just ((fromSql attnotnull) == 'f')}
                      )
           desccol x =
