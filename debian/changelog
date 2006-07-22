@@ -1,3 +1,9 @@
+hdbc-postgresql (1.0.1.0) unstable; urgency=low
+
+  * Fix unknown column size, such as for text columns
+
+ -- John Goerzen <jgoerzen@complete.org>  Sat, 22 Jul 2006 07:08:49 -0500
+
 hdbc-postgresql (1.0.0.0) unstable; urgency=low
 
   * Blessing this version as 1.0.0.0
