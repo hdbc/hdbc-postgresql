@@ -1,3 +1,9 @@
+hdbc-postgresql (1.0.1.1) unstable; urgency=low
+
+  * Rebuilt for GHC 6.6.
+
+ -- John Goerzen <jgoerzen@complete.org>  Thu, 19 Oct 2006 22:05:41 -0500
+
 hdbc-postgresql (1.0.1.0) unstable; urgency=low
 
   * Fix unknown column size, such as for text columns

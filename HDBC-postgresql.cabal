@@ -2,7 +2,7 @@ Extra-Libraries: pq
 include-dirs: /usr/include/postgresql, .
 -- extra-lib-dirs: 
 Name: HDBC-postgresql
-Version: 1.0.1.0
+Version: 1.0.1.1
 License: LGPL
 Maintainer: John Goerzen <jgoerzen@complete.org>
 Stability: Alpha
