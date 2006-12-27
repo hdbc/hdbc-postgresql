@@ -32,10 +32,9 @@ Written by John Goerzen, jgoerzen\@complete.org
 
 module Database.HDBC.PostgreSQL
     (
-     connectPostgreSQL
+     connectPostgreSQL, Connection
     )
 
 where
 
-import Database.HDBC.PostgreSQL.Connection(connectPostgreSQL)
-
+import Database.HDBC.PostgreSQL.Connection(connectPostgreSQL, Connection())

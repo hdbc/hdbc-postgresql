@@ -19,11 +19,14 @@ Copyright (C) 2005-2006 John Goerzen <jgoerzen@complete.org>
     Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 -}
 
-module Database.HDBC.PostgreSQL.Connection (connectPostgreSQL) where
+module Database.HDBC.PostgreSQL.Connection
+	(connectPostgreSQL, Impl.Connection())
+ where
 
 import Database.HDBC.Types
 import Database.HDBC
 import Database.HDBC.DriverUtils
+import qualified Database.HDBC.PostgreSQL.ConnectionImpl as Impl
 import Database.HDBC.PostgreSQL.Types
 import Database.HDBC.PostgreSQL.Statement
 import Database.HDBC.PostgreSQL.PTypeConv
@@ -44,7 +47,7 @@ import Control.Concurrent.MVar
 
 See <http://www.postgresql.org/docs/8.1/static/libpq.html#LIBPQ-CONNECT> for the meaning
 of the connection string. -}
-connectPostgreSQL :: String -> IO Connection
+connectPostgreSQL :: String -> IO Impl.Connection
 connectPostgreSQL args = withCString args $
   \cs -> do ptr <- pqconnectdb cs
             status <- pqstatus ptr
@@ -56,7 +59,7 @@ connectPostgreSQL args = withCString args $
 
 -- FIXME: environment vars may have changed, should use pgsql enquiries
 -- for clone.
-mkConn :: String -> Conn -> IO Connection
+mkConn :: String -> Conn -> IO Impl.Connection
 mkConn args conn = withConn conn $
   \cconn -> 
     do children <- newMVar []
@@ -64,21 +67,21 @@ mkConn args conn = withConn conn $
        protover <- pqprotocolVersion cconn
        serverver <- pqserverVersion cconn
        let clientver = #{const_str PG_VERSION}
-       return $ Connection {
-                            disconnect = fdisconnect conn children,
-                            commit = fcommit conn children,
-                            rollback = frollback conn children,
-                            run = frun conn children,
-                            prepare = newSth conn children,
-                            clone = connectPostgreSQL args,
-                            hdbcDriverName = "postgresql",
-                            hdbcClientVer = clientver,
-                            proxiedClientName = "postgresql",
-                            proxiedClientVer = show protover,
-                            dbServerVer = show serverver,
-                            dbTransactionSupport = True,
-                            getTables = fgetTables conn children,
-                            describeTable = fdescribeTable conn children}
+       return $ Impl.Connection {
+                            Impl.disconnect = fdisconnect conn children,
+                            Impl.commit = fcommit conn children,
+                            Impl.rollback = frollback conn children,
+                            Impl.run = frun conn children,
+                            Impl.prepare = newSth conn children,
+                            Impl.clone = connectPostgreSQL args,
+                            Impl.hdbcDriverName = "postgresql",
+                            Impl.hdbcClientVer = clientver,
+                            Impl.proxiedClientName = "postgresql",
+                            Impl.proxiedClientVer = show protover,
+                            Impl.dbServerVer = show serverver,
+                            Impl.dbTransactionSupport = True,
+                            Impl.getTables = fgetTables conn children,
+                            Impl.describeTable = fdescribeTable conn children}
 
 --------------------------------------------------
 -- Guts here

@@ -17,19 +17,22 @@
 GHCPARMS := -fglasgow-exts
 
 .PHONY: all hugsbuild
-all: setup			# GHC build
-	./setup configure --user
-	./setup build
+all:
+	./Setup.lhs configure
+	./Setup.lhs build
 
-hugsbuild: setup
-	./setup configure --hugs
-	./setup build
+hugsbuild: 
+	./Setup.lhs configure --hugs
+	./Setup.lhs build
+
+install:
+	./Setup.lhs install
 
 setup: Setup.lhs HDBC-postgresql.cabal
 	ghc -package Cabal Setup.lhs -o setup
 
 clean:
-	-./setup clean
+	-./Setup.lhs clean
 	-rm -rf html `find . -name "*.o"` `find . -name "*.hi"` \
 		`find . -name "*~"` *.a setup dist testsrc/runtests \
 		local-pkg doctmp
