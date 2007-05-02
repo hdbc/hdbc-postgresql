@@ -8,7 +8,7 @@ Section: libs
 Package: libghc6-hdbc-postgresql-dev
 Section: libdevel
 Architecture: any
-Depends: libghc6-hdbc-dev (>= 1.0.1.2), ${haskell:Depends}, ${shlibs:Depends}, ${misc:Depends}, libpq-dev (>= 8.1.1), libghc6-mtl-dev
+Depends: libghc6-hdbc-dev (>= 1.1.0), ${haskell:Depends}, ${shlibs:Depends}, ${misc:Depends}, libpq-dev (>= 8.1.1), libghc6-mtl-dev
 Description: PostgreSQL HDBC (Haskell Database Connectivity) Driver for GHC
  HDBC provides an abstraction layer between Haskell programs and SQL
  relational databases. This lets you write database code once, in
@@ -20,7 +20,7 @@ Description: PostgreSQL HDBC (Haskell Database Connectivity) Driver for GHC
 Package: libhugs-hdbc-postgresql
 Section: libs
 Architecture: any
-Depends: libhugs-hdbc (>= 1.0.1), ${haskell:Depends}, ${shlibs:Depends}, ${misc:Depends}
+Depends: libhugs-hdbc (>= 1.1.0), ${haskell:Depends}, ${shlibs:Depends}, ${misc:Depends}
 Description: PostgreSQL HDBC (Haskell Database Connectivity) Driver for Hugs
  HDBC provides an abstraction layer between Haskell programs and SQL
  relational databases. This lets you write database code once, in
