@@ -1,6 +1,6 @@
-hdbc-postgresql (1.1.1.0) unstable; urgency=low
+hdbc-postgresql (1.1.2.0) unstable; urgency=low
 
-  * Update for HDBC 1.1.1.
+  * Update for HDBC 1.1.2.
 
  -- John Goerzen <jgoerzen@complete.org>  Thu, 03 May 2007 04:25:11 -0500
 
