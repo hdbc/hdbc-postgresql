@@ -1,3 +1,9 @@
+hdbc-postgresql (1.1.2.1) unstable; urgency=low
+
+  * Update for GHC 6.6.1.
+
+ -- John Goerzen <jgoerzen@complete.org>  Wed, 06 Jun 2007 07:05:30 -0500
+
 hdbc-postgresql (1.1.2.0) unstable; urgency=low
 
   * Update for HDBC 1.1.2.
