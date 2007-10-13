@@ -53,6 +53,9 @@ The steps to install are:
 
 If you're on Windows, you can omit the leading "./".
 
+You may need to add your version of /usr/local/pgsql/include or lib to
+LD_LIBRARY_PATH.
+
 USAGE
 -----
 
