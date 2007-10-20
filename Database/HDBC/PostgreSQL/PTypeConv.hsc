@@ -26,6 +26,38 @@ import Data.Int
 #include <libpq-fe.h>
 
 
+colDescForPGAttr :: #{type Oid} -> Int -> String -> Bool -> SqlColDesc
+colDescForPGAttr atttypeid attlen formattedtype attnotnull =
+    let
+        coltype = oidToColType atttypeid
+
+        size = if attlen == -1 then maybeExtractFirstParenthesizedNumber formattedtype
+               else Just attlen
+
+        decDigs = if coltype == SqlNumericT then maybeExtractSecondParenthesizedNumber formattedtype
+                  else Nothing
+    in
+      SqlColDesc { colType = coltype,
+                   colSize = size,
+                   colOctetLength = Nothing, -- not available in postgres
+                   colDecDigits = decDigs,
+                   colNullable = Just attnotnull }
+    where
+      maybeExtractFirstParenthesizedNumber s = case extractParenthesizedInts s of n:_ -> Just n; _ -> Nothing
+
+      maybeExtractSecondParenthesizedNumber s = case extractParenthesizedInts s of n1:n2:_ -> Just n2; _ -> Nothing
+
+      extractParenthesizedInts :: String -> [Int]
+      extractParenthesizedInts s =
+          case takeWhile (/=')') $ dropWhile (/='(') s of
+            '(':textBetweenParens ->
+                case map fst $ reads $ "[" ++ textBetweenParens ++ "]" of
+                  l:_ -> l
+                  [] -> []
+            _ -> []
+
+
+
 oidToColDef :: #{type Oid} -> SqlColDesc
 oidToColDef oid =
     SqlColDesc {colType = (oidToColType oid),

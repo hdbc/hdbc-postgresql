@@ -26,6 +26,7 @@ module Database.HDBC.PostgreSQL.Connection
 import Database.HDBC.Types
 import Database.HDBC
 import Database.HDBC.DriverUtils
+import Database.HDBC.ColTypes
 import qualified Database.HDBC.PostgreSQL.ConnectionImpl as Impl
 import Database.HDBC.PostgreSQL.Types
 import Database.HDBC.PostgreSQL.Statement
@@ -38,6 +39,7 @@ import Database.HDBC.PostgreSQL.Utils
 import Foreign.ForeignPtr
 import Foreign.Ptr
 import Data.Word
+import Data.Maybe
 import Control.Concurrent.MVar
 
 #include <libpq-fe.h>
@@ -108,25 +110,27 @@ fgetTables conn children =
        let res = map fromSql $ concat res1
        return $ seq (length res) res
 
-fdescribeTable o cl table =
+fdescribeTable o cl table = fdescribeSchemaTable o cl Nothing table
+
+fdescribeSchemaTable :: Conn -> ChildList -> Maybe String -> String -> IO [(String, SqlColDesc)]
+fdescribeSchemaTable o cl maybeSchema table =
     do sth <- newSth o cl 
-              ("select attname, atttypid, attlen, attnum, attnotnull " ++
-               "from pg_attribute, pg_class " ++
-               "where relname = ? and attnum > 0 and " ++
-               "attrelid = pg_class.oid order by attnum")
-       execute sth [SqlString table]
+              ("SELECT attname, atttypid, attlen, format_type(atttypid, atttypmod), attnotnull " ++
+               "FROM pg_attribute, pg_class, pg_namespace ns " ++
+               "WHERE relname = ? and attnum > 0 and attisdropped IS FALSE " ++
+               (if isJust maybeSchema then "and ns.nspname = ? " else "") ++
+               "and attrelid = pg_class.oid and relnamespace = ns.oid order by attnum")
+       let params = toSql table : (if isJust maybeSchema then [toSql $ fromJust maybeSchema] else [])
+       execute sth params
        res <- fetchAllRows sth
        return $ map desccol res
-    where desccol [attname, atttypid, attlen, attnum, attnotnull] =
-              let coldef = oidToColDef (fromSql atttypid)
-                  in (fromSql attname,
-                      coldef {colSize = case fromSql attlen of
-                                          -1 -> Nothing
-                                          x -> Just x,
-                              colNullable = Just ((fromSql attnotnull) == 'f')}
-                     )
-          desccol x =
-              error $ "Got unexpected result from pg_attribute: " ++ show x
+    where
+      desccol [attname, atttypid, attlen, formattedtype, attnotnull] =
+          (fromSql attname, 
+           colDescForPGAttr (fromSql atttypid) (fromSql attlen) (fromSql formattedtype) (fromSql attnotnull == 'f'))
+      desccol x =
+          error $ "Got unexpected result from pg_attribute: " ++ show x
+         
 
 fdisconnect conn mchildren = 
     do closeAllChildren mchildren
