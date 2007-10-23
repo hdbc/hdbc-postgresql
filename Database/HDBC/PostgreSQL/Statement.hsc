@@ -33,8 +33,11 @@ import Foreign.Storable
 import Control.Monad
 import Data.List
 import Data.Word
+import Data.Maybe
+import Data.Ratio
 import Control.Exception
 import System.IO
+import System.Time
 import Database.HDBC.PostgreSQL.Parser(convertSQL)
 import Database.HDBC.DriverUtils
 import Database.HDBC.PostgreSQL.PTypeConv
@@ -166,8 +169,9 @@ ffetchrow sstate = modifyMVar (nextrowmv sstate) dofetchrow
                 if isnull /= 0
                    then return SqlNull
                    else do text <- pqgetvalue p row icol
+                           coltype <- liftM oidToColType $ pqftype p icol
                            s <- peekCString text
-                           return (SqlString s)
+                           makeSqlValue coltype s
 
 fgetcoldef cstmt =
     do ncols <- pqnfields cstmt
@@ -244,3 +248,184 @@ foreign import ccall unsafe "libpq-fe.h PQfname"
 
 foreign import ccall unsafe "libpq-fe.h PQftype"
   pqftype :: Ptr CStmt -> CInt -> IO #{type Oid}
+
+
+
+-- SqlValue construction function and helpers
+
+-- Make a SqlValue for the passed column type and string value, where it is assumed that the value represented is not the Sql null value.
+-- The IO Monad is required only to obtain the local timezone for interpreting date/time values without an explicit timezone.
+makeSqlValue :: SqlTypeId -> String -> IO SqlValue
+makeSqlValue sqltypeid strval =
+
+    case sqltypeid of 
+
+      tid | tid == SqlCharT        ||
+            tid == SqlVarCharT     ||
+            tid == SqlLongVarCharT ||
+            tid == SqlWCharT       ||
+            tid == SqlWVarCharT    ||
+            tid == SqlWLongVarCharT  -> return $ SqlString strval
+
+      tid | tid == SqlDecimalT ||
+            tid == SqlNumericT   -> return $ SqlRational (makeRationalFromDecimal strval)
+
+      tid | tid == SqlSmallIntT ||
+            tid == SqlTinyIntT  ||
+            tid == SqlIntegerT     -> return $ SqlInt32 (read strval)
+
+      SqlBigIntT -> return $ SqlInteger (read strval)
+
+      tid | tid == SqlRealT   ||
+            tid == SqlFloatT  ||
+            tid == SqlDoubleT   -> return $ SqlDouble (read strval)
+      
+      SqlBitT -> return $ case strval of 
+                   't':_ -> SqlBool True
+                   'f':_ -> SqlBool False
+                   'T':_ -> SqlBool True -- the rest of these are here "just in case", since they are legal as input
+                   'y':_ -> SqlBool True
+                   'Y':_ -> SqlBool True
+                   "1"   -> SqlBool True
+                   _     -> SqlBool False
+      
+      -- Dates and Date/Times
+      tid | tid == SqlDateT        ||
+            tid == SqlTimestampT   ||
+            tid == SqlUTCDateTimeT   ->
+                do
+                  clockTime <- clockTimeFromISODateAndMaybeTime strval
+                             
+                  case clockTime of TOD epochSecs picos -> return $ SqlEpochTime epochSecs
+
+
+      -- Times without dates
+      tid | tid == SqlTimeT    || 
+            tid == SqlUTCTimeT   -> return $ SqlTimeDiff $ secsTimeDiffFromISOTime strval
+      
+      -- TODO: There's no proper way to map intervals as understood by postgres currently so we resort to SqlString. 
+      -- E.g. a "1 month" interval is not a specific span of time that could be converted to a SqlTimeDiff.
+      -- A new SqlValue constructor would be needed (wrapping System.Time.TimeDiff) to really handle intervals properly.
+      SqlIntervalT si -> return $ SqlString strval
+      
+      -- TODO: For now we just map the binary types to SqlStrings. New SqlValue constructors are needed to handle these.
+      tid | tid == SqlBinaryT        ||
+            tid == SqlVarBinaryT     || 
+            tid == SqlLongVarBinaryT    -> return $ SqlString strval
+
+      SqlGUIDT -> return $ SqlString strval
+
+      SqlUnknownT s -> return $ SqlString strval
+
+
+-- Make a rational number from a decimal string representation of the number.
+makeRationalFromDecimal :: String -> Rational
+makeRationalFromDecimal s = 
+    case elemIndex '.' s of
+      Nothing -> toRational ((read s)::Integer)
+      Just dotix -> 
+        let (nstr,'.':dstr) = splitAt dotix s
+            num = (read $ nstr ++ dstr)::Integer
+            den = 10^(genericLength dstr) :: Integer
+        in
+          num % den
+
+
+-- Creates a ClockTime from an ISO-8601 representation of a date or date/time with optional numeric timezone, as output by Postgres.
+-- The IO monad is required because local timezone information may need to be fetched if not provided in the input string.
+clockTimeFromISODateAndMaybeTime :: String -> IO ClockTime
+clockTimeFromISODateAndMaybeTime datestr =
+    let
+        (y, '-':month_etc) = head $ reads datestr
+        (mo, '-':day_etc) = head $ reads month_etc
+        (d, maybeTime) = head $ reads day_etc
+        hourParses = reads maybeTime
+        (h, min_etc) = if not (null hourParses) then head hourParses else (0,"")
+        (min, sec_etc) = if not (null $ drop 1 min_etc) then head $ reads (drop 1 min_etc) else (0,"")
+        (sec, maybeTZ) = if not (null $ drop 1 sec_etc) then head $ reads (drop 1 sec_etc) else (0,"")
+        tzParses = reads maybeTZ
+    in
+      do
+        tzoff <-  if not $ null tzParses then return $ 3600 * (fst $ head $ tzParses) else getLocalTimeZoneOffsetSecsForDateTime y mo d h min sec
+
+        if null hourParses 
+          then 
+            return $ toClockTime $ makeCalendarTimeForDate y mo d tzoff
+          else
+            return $ toClockTime $ makeCalendarTimeForDateTime y mo d h min sec tzoff
+
+    where
+      makeCalendarTimeForDate :: Int -> Int -> Int -> Int -> CalendarTime
+      makeCalendarTimeForDate year mon day tzoff =
+          CalendarTime { ctYear = year, ctMonth = makeMonth mon, ctDay = day, 
+                         ctHour = 0, ctMin = 0, ctSec = 0, ctPicosec = 0, 
+                         ctWDay = Sunday, ctYDay = 0, -- bogus but ignored when converting to ClockTime according to the docs in System.Time
+                         ctTZName = "",
+                         ctTZ = tzoff,
+                         ctIsDST = False -- bogus but ignored when converting to ClockTime
+                       }
+
+      makeCalendarTimeForDateTime :: Int -> Int -> Int -> Int -> Int -> Int -> Int -> CalendarTime
+      makeCalendarTimeForDateTime year mon day hour min sec tzoff =
+          CalendarTime { ctYear = year, ctMonth = makeMonth mon, ctDay = day, ctHour = hour, ctMin = min, ctSec = sec,
+                         ctPicosec = 0, 
+                         ctWDay = Sunday, ctYDay = 0, -- bogus but ignored when converting to ClockTime
+                         ctTZName = "",
+                         ctTZ = tzoff,
+                         ctIsDST = False -- bogus but ignored when converting to ClockTime
+                       }
+
+      -- Convert 1->Jan, 2->Feb etc as commonly done on planet Earth (what's with the Month enum instance in System.Time ?)
+      makeMonth :: Int -> Month
+      makeMonth monNum = toEnum (monNum - 1)
+
+
+      getLocalTimeZoneOffsetSecsForDateTime :: Int -> Int -> Int -> Int -> Int -> Int -> IO Int 
+      getLocalTimeZoneOffsetSecsForDateTime y mo d h min s =
+          do
+            -- Convert nominal day and time at GMT to our location to get first guess of our tz offset at required date and time
+            approxLocalCalTime <- toLocalCalTime (makeCalendarTimeForDateTime y mo d h min s 0)
+      
+            -- First guess of the proper timezon offset for this date and time in our location.
+            let firstGuess = makeCalendarTimeForDateTime y mo d h min s (ctTZ approxLocalCalTime)
+      
+            -- Allow up to 6 hours for date/time dependent timezone offset adjustments (Usually should be 0,1, or -1 depending on daylight savings time).
+            let adjustments = map (3600*) $ [0,-1,1] ++ [2..6] ++  [-2,-3..(-6)]
+
+            let adjustedCalTimes = map (\adj -> firstGuess { ctTZ = ctTZ firstGuess + adj }) adjustments
+      
+            successList <- mapM isFixedPointUnderConversionToLocalTime adjustedCalTimes
+
+            case elemIndex True successList of
+              Nothing -> error $ "Could not find proper timezone for date: " ++ 
+                                 show y ++ "-" ++ show mo ++ "-" ++ show d ++ " " ++ show h ++ ":" ++ show min ++ ":" ++ show s
+              Just ix -> return (ctTZ $ adjustedCalTimes!!ix)
+          where
+            toLocalCalTime :: CalendarTime -> IO CalendarTime
+            toLocalCalTime calTime = toCalendarTime $ toClockTime calTime
+      
+            isFixedPointUnderConversionToLocalTime :: CalendarTime -> IO Bool
+            isFixedPointUnderConversionToLocalTime calTime =
+                do
+                  calTime' <- toLocalCalTime calTime
+                  return $ eqParts calTime calTime'
+
+            eqParts :: CalendarTime -> CalendarTime -> Bool
+            eqParts calTime1 calTime2 = ctHour calTime1 == ctHour calTime2 &&
+                                        ctMin calTime1 == ctMin calTime2 &&
+                                        ctSec calTime1 == ctSec calTime2 &&
+                                        ctDay calTime1 == ctDay calTime2 &&
+                                        ctMonth calTime1 == ctMonth calTime2 &&
+                                        ctYear calTime1 == ctYear calTime2
+
+
+
+-- Time values (without dates) are represented as a seconds count
+secsTimeDiffFromISOTime :: String -> Integer
+secsTimeDiffFromISOTime timestr =
+    let
+        (h, min_etc) = head $ reads timestr
+        (min, sec_etc) = if null min_etc || min_etc == ":" then (0,":0") else head $ reads (tail  min_etc)
+        (sec, _) = if null sec_etc || sec_etc == ":" then (0,"") else head $ reads (tail sec_etc)
+    in
+      h * 3600 + 60 * min + sec
