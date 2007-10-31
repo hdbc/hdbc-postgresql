@@ -94,6 +94,17 @@ testFetchAllRows = dbTestCase (\dbh ->
                                )
     where rows = map (\x -> [iToSql x]) [1..9]
 
+testFetchAllRows' = dbTestCase (\dbh ->
+    do sth <- prepare dbh "INSERT INTO hdbctest1 VALUES ('sFetchAllRows', ?, NULL, NULL)"
+       executeMany sth rows
+       commit dbh
+       sth <- prepare dbh "SELECT testid FROM hdbctest1 WHERE testname = 'sFetchAllRows' ORDER BY testid"
+       execute sth []
+       results <- fetchAllRows' sth
+       assertEqual "" rows results
+                               )
+    where rows = map (\x -> [iToSql x]) [1..9]
+
 basicTransactions = dbTestCase (\dbh ->
     do assertBool "Connected database does not support transactions; skipping transaction test" (dbTransactionSupport dbh)
        sth <- prepare dbh "INSERT INTO hdbctest1 VALUES ('basicTransactions', ?, NULL, NULL)"
@@ -149,6 +160,7 @@ tests = TestList
          TestLabel "executeReplace" executeReplace,
          TestLabel "executeMany" testExecuteMany,
          TestLabel "sFetchAllRows" testFetchAllRows,
+         TestLabel "sFetchAllRows'" testFetchAllRows',
          TestLabel "basicTransactions" basicTransactions,
          TestLabel "withTransaction" testWithTransaction,
          TestLabel "dropTable" dropTable
