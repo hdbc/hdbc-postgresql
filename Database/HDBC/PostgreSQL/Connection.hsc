@@ -106,7 +106,7 @@ frollback o cl =  do frun o cl "ROLLBACK" []
 fgetTables conn children =
     do sth <- newSth conn children "select table_name from information_schema.tables where table_schema = 'public'"
        execute sth []
-       res1 <- fetchAllRows sth
+       res1 <- fetchAllRows' sth
        let res = map fromSql $ concat res1
        return $ seq (length res) res
 
@@ -122,7 +122,7 @@ fdescribeSchemaTable o cl maybeSchema table =
                "and attrelid = pg_class.oid and relnamespace = ns.oid order by attnum")
        let params = toSql table : (if isJust maybeSchema then [toSql $ fromJust maybeSchema] else [])
        execute sth params
-       res <- fetchAllRows sth
+       res <- fetchAllRows' sth
        return $ map desccol res
     where
       desccol [attname, atttypid, attlen, formattedtype, attnotnull] =
