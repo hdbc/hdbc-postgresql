@@ -1,6 +1,40 @@
 #!/usr/bin/env runhaskell
 
-> import Distribution.Simple
+\begin{code}
+import Distribution.PackageDescription
+import Distribution.Simple
+import Distribution.Simple.LocalBuildInfo
+import Distribution.Simple.Program
+import qualified Distribution.Verbosity as Verbosity
 
-> main = defaultMain
+main = defaultMainWithHooks defaultUserHooks {
+         hookedPrograms = [pgConfigProgram],
+         postConf=configure
+       }
 
+pgConfigProgram = (simpleProgram "pg_config") {
+  programFindVersion = findProgramVersion "--version" $ \str ->
+    -- Invoking "pg_config --version" gives a string like "PostgreSQL 8.0.13"
+    case words str of
+      (_:ver:_) -> ver
+      _         -> ""
+}
+
+configure _ _ _ lbi = do
+  mb_bi <- pgConfigBuildInfo Verbosity.normal lbi
+  writeHookedBuildInfo "HDBC-postgresql.buildinfo" (mb_bi,[])
+\end{code}
+
+Populate BuildInfo using pg_config tool.
+\begin{code}
+pgConfigBuildInfo verbosity lbi = do
+  (pgConfigProg, _) <- requireProgram verbosity pgConfigProgram
+                       (orLaterVersion $ Version [8] []) (withPrograms lbi)
+  let pg_config = rawSystemProgramStdout verbosity pgConfigProg
+  libDir       <- pg_config ["--libdir"]
+  incDir       <- pg_config ["--includedir"]
+  return $ Just emptyBuildInfo {
+    extraLibDirs = lines libDir,
+    includeDirs  = lines incDir
+  }
+\end{code}
