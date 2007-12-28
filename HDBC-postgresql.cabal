@@ -1,6 +1,3 @@
-Extra-Libraries: pq
-include-dirs: /usr/include/postgresql, .
--- extra-lib-dirs: 
 Name: HDBC-postgresql
 Version: 1.1.3.0
 License: LGPL
@@ -14,17 +11,30 @@ Category: Database
 synopsis: PostgreSQL driver for HDBC
 Description: This package provides a PostgreSQL driver for HDBC
 Stability: Stable
-Exposed-Modules: Database.HDBC.PostgreSQL
-Other-Modules: Database.HDBC.PostgreSQL.Connection,
- Database.HDBC.PostgreSQL.ConnectionImpl,
- Database.HDBC.PostgreSQL.Statement,
- Database.HDBC.PostgreSQL.Types,
- Database.HDBC.PostgreSQL.Utils,
- Database.HDBC.PostgreSQL.Parser,
- Database.HDBC.PostgreSQL.PTypeConv
---Extensions: ExistentialQuantification, AllowOverlappingInstances,
---    AllowUndecidableInstances, CPP
-Extensions: ExistentialQuantification
-Build-Depends: base, mtl, HDBC>=1.1.0, parsec
-GHC-Options: -O2
-C-Sources: hdbc-postgresql-helper.c
+
+Cabal-Version: >=1.2
+
+flag splitBase
+  description: Choose the new smaller, split-up base package.
+library
+  if flag(splitBase)
+    Build-Depends: base>=3, old-time
+  else
+    Build-Depends: base<3
+  Build-Depends: mtl, HDBC>=1.1.0, parsec
+  Exposed-Modules: Database.HDBC.PostgreSQL
+  Other-Modules: Database.HDBC.PostgreSQL.Connection,
+    Database.HDBC.PostgreSQL.ConnectionImpl,
+    Database.HDBC.PostgreSQL.Statement,
+    Database.HDBC.PostgreSQL.Types,
+    Database.HDBC.PostgreSQL.Utils,
+    Database.HDBC.PostgreSQL.Parser,
+    Database.HDBC.PostgreSQL.PTypeConv
+  --Extensions: ExistentialQuantification, AllowOverlappingInstances,
+  --    AllowUndecidableInstances, CPP
+  Extensions: ExistentialQuantification, ForeignFunctionInterface
+  GHC-Options: -O2
+  C-Sources: hdbc-postgresql-helper.c
+  Extra-Libraries: pq
+  include-dirs: /usr/include/postgresql, .
+  -- extra-lib-dirs: 
