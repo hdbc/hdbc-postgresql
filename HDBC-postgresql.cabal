@@ -5,23 +5,20 @@ Maintainer: John Goerzen <jgoerzen@complete.org>
 Author: John Goerzen
 Copyright: Copyright (c) 2005-2007 John Goerzen
 license-file: COPYRIGHT
-extra-source-files: COPYING, hdbc-postgresql-helper.h
+extra-source-files: COPYING, hdbc-postgresql-helper.h, pgtypes.h
 homepage: http://software.complete.org/hdbc-postgres
 Category: Database
 synopsis: PostgreSQL driver for HDBC
 Description: This package provides a PostgreSQL driver for HDBC
 Stability: Stable
 
-Cabal-Version: >=1.2
+Build-Type: Custom
+Cabal-Version: >=1.2 && < 1.3
 
-flag splitBase
-  description: Choose the new smaller, split-up base package.
-library
-  if flag(splitBase)
-    Build-Depends: base>=3, old-time
-  else
-    Build-Depends: base<3
-  Build-Depends: mtl, HDBC>=1.1.0, parsec
+Flag splitBase
+  description: Choose the new smaller, split-up package.
+
+Library
   Exposed-Modules: Database.HDBC.PostgreSQL
   Other-Modules: Database.HDBC.PostgreSQL.Connection,
     Database.HDBC.PostgreSQL.ConnectionImpl,
@@ -33,8 +30,11 @@ library
   --Extensions: ExistentialQuantification, AllowOverlappingInstances,
   --    AllowUndecidableInstances, CPP
   Extensions: ExistentialQuantification, ForeignFunctionInterface
-  GHC-Options: -O2
-  C-Sources: hdbc-postgresql-helper.c
+  Build-Depends: base, mtl, HDBC>=1.1.0, parsec
+  if flag(splitBase)
+    Build-Depends: base >= 3, old-time
+  else
+    Build-Depends: base < 3
   Extra-Libraries: pq
-  include-dirs: /usr/include/postgresql, .
-  -- extra-lib-dirs: 
+  C-Sources: hdbc-postgresql-helper.c
+  Include-Dirs: .
