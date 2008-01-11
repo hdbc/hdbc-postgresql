@@ -1,3 +1,9 @@
+hdbc-postgresql (1.1.4.0.0) unstable; urgency=low
+
+  * Updated for GHC 6 and HDBC 1.1.4.
+
+ -- John Goerzen <jgoerzen@complete.org>  Fri, 11 Jan 2008 11:15:36 -0600
+
 hdbc-postgresql (1.1.3.0.1) unstable; urgency=low
 
   * Added build-dep on libhugs-parsec.  Closes: #458666.
