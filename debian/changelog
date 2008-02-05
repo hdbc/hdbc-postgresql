@@ -1,8 +1,9 @@
-hdbc-postgresql (1.1.4.0.1) unstable; urgency=low
+hdbc-postgresql (1.1.4.1.0) unstable; urgency=low
 
+  * Deal with PostgreSQL version numbers containing "RC".
   * Added build-dep and depends on Parsec.  Closes: #461599.
 
- -- John Goerzen <jgoerzen@complete.org>  Mon, 04 Feb 2008 13:14:58 -0600
+ -- John Goerzen <jgoerzen@complete.org>  Mon, 04 Feb 2008 03:14:58 -0600
 
 hdbc-postgresql (1.1.4.0.0) unstable; urgency=low
 

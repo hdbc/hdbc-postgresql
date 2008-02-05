@@ -16,7 +16,10 @@ pgConfigProgram = (simpleProgram "pg_config") {
   programFindVersion = findProgramVersion "--version" $ \str ->
     -- Invoking "pg_config --version" gives a string like "PostgreSQL 8.0.13"
     case words str of
-      (_:ver:_) -> ver
+      (_:ver:_) -> 
+          -- Hack: drop off the "RC" bit since Cabal doesn't like it.
+          takeWhile (/= 'R')
+          ver
       _         -> ""
 }
 
