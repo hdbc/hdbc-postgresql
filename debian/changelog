@@ -1,3 +1,9 @@
+hdbc-postgresql (1.1.4.0.1) unstable; urgency=low
+
+  * Added build-dep and depends on Parsec.  Closes: #461599.
+
+ -- John Goerzen <jgoerzen@complete.org>  Mon, 04 Feb 2008 13:14:58 -0600
+
 hdbc-postgresql (1.1.4.0.0) unstable; urgency=low
 
   * Updated for GHC 6 and HDBC 1.1.4.
