@@ -1,3 +1,9 @@
+hdbc-postgresql (1.1.4.1.1) unstable; urgency=low
+
+  * Updated build-deps and rebuilt with HDBC 1.1.5.
+
+ -- John Goerzen <jgoerzen@complete.org>  Thu, 26 Jun 2008 09:09:01 -0500
+
 hdbc-postgresql (1.1.4.1.0) unstable; urgency=low
 
   * Deal with PostgreSQL version numbers containing "RC".
