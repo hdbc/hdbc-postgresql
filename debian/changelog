@@ -1,6 +1,7 @@
 hdbc-postgresql (1.1.4.1.1) unstable; urgency=low
 
   * Updated build-deps and rebuilt with HDBC 1.1.5.
+  * Removed a bit of boilerplate frmo description.  Closes: #447886.
 
  -- John Goerzen <jgoerzen@complete.org>  Thu, 26 Jun 2008 09:09:01 -0500
 
