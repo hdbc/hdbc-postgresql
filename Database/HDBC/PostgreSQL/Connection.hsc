@@ -129,7 +129,7 @@ fdescribeSchemaTable o cl maybeSchema table =
     where
       desccol [attname, atttypid, attlen, formattedtype, attnotnull] =
           (fromSql attname, 
-           colDescForPGAttr (fromSql atttypid) (fromSql attlen) (fromSql formattedtype) (fromSql attnotnull == 'f'))
+           colDescForPGAttr (fromSql atttypid) (fromSql attlen) (fromSql formattedtype) (fromSql attnotnull == False))
       desccol x =
           error $ "Got unexpected result from pg_attribute: " ++ show x
          
