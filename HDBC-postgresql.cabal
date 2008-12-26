@@ -33,7 +33,7 @@ Library
   Extensions: ExistentialQuantification, ForeignFunctionInterface
   Build-Depends: base, mtl, HDBC>=1.1.0, parsec, encoding, bytestring
   if flag(splitBase)
-    Build-Depends: base >= 3, old-time
+    Build-Depends: base >= 3 && < 4, old-time
   else
     Build-Depends: base < 3
   Extra-Libraries: pq
