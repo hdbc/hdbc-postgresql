@@ -1,0 +1,2 @@
+extra-lib-dirs: @PGLIBDIR@
+include-dirs: @PGINCDIR@
