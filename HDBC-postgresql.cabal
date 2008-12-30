@@ -31,7 +31,7 @@ Library
   --Extensions: ExistentialQuantification, AllowOverlappingInstances,
   --    AllowUndecidableInstances, CPP
   Extensions: ExistentialQuantification, ForeignFunctionInterface
-  Build-Depends: base, mtl, HDBC>=1.1.0, parsec, encoding, bytestring
+  Build-Depends: base, mtl, HDBC>=1.1.0, parsec
   if flag(splitBase)
     Build-Depends: base >= 3 && < 4, old-time
   else
