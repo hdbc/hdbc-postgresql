@@ -1,3 +1,10 @@
+hdbc-postgresql (1.1.6.0.0) unstable; urgency=low
+
+  * New version with GHC 6.10 compatibility.
+  * Added dh_haskell_depends call.
+
+ -- John Goerzen <jgoerzen@complete.org>  Tue, 30 Dec 2008 09:01:20 -0600
+
 hdbc-postgresql (1.1.4.1.1) unstable; urgency=low
 
   * Updated build-deps and rebuilt with HDBC 1.1.5.
