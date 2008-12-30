@@ -69,7 +69,7 @@ mkConn args conn = withConn conn $
        protover <- pqprotocolVersion cconn
        serverver <- pqserverVersion cconn
        let clientver = #{const_str PG_VERSION}
-       return $ Impl.Connection {
+       let rconn = Impl.Connection {
                             Impl.disconnect = fdisconnect conn children,
                             Impl.commit = fcommit conn children,
                             Impl.rollback = frollback conn children,
@@ -84,6 +84,8 @@ mkConn args conn = withConn conn $
                             Impl.dbTransactionSupport = True,
                             Impl.getTables = fgetTables conn children,
                             Impl.describeTable = fdescribeTable conn children}
+       quickQuery rconn "SET client_encoding TO utf8;" []
+       return rconn
 
 --------------------------------------------------
 -- Guts here
