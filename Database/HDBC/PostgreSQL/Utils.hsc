@@ -27,9 +27,13 @@ import Control.Exception
 import Foreign.Storable
 import Foreign.Marshal.Array
 import Foreign.Marshal.Alloc
+import Foreign.Marshal.Utils
 import Data.Word
 import System.Time
 import System.Locale
+import qualified Data.ByteString.UTF8 as Utf8
+import qualified Data.ByteString as B
+import qualified Data.ByteString.Unsafe as B
 
 #include "hdbc-postgresql-helper.h"
 
@@ -71,6 +75,7 @@ withCStringArr0 inp action = withAnyArr0 convfunc freefunc inp action
               do ct <- toCalendarTime $ TOD t 0
                  newCString (formatCalendarTime defaultTimeLocale 
                              (iso8601DateFormat $ Just "%H:%M:%S") ct)
+          convfunc (SqlString s) = cstrUtf8String s
           convfunc x = newCString (fromSql x)
           freefunc x =
               if x == nullPtr
@@ -87,6 +92,22 @@ withAnyArr0 input2ptract freeact inp action =
             (\clist -> mapM_ freeact clist)
             (\clist -> withArray0 nullPtr clist action)
 
+
+stringUtf8CStr :: CString -> IO String
+stringUtf8CStr c = do
+    byteString <- B.packCString c 
+    return (Utf8.toString byteString)
+
+cstrUtf8String :: String -> IO CString
+cstrUtf8String s = do
+    B.unsafeUseAsCStringLen (Utf8.fromString s) $ \(s,len) -> do
+        res <- mallocBytes (len+1)
+        -- copy in
+        copyBytes res s len
+        -- null terminate
+        poke (plusPtr res len) '\0'
+        -- return ptr
+        return res
 
 genericUnwrap :: ForeignPtr (Ptr a) -> (Ptr a -> IO b) -> IO b
 genericUnwrap fptr action = withForeignPtr fptr (\structptr ->

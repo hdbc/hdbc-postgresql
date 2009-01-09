@@ -41,6 +41,7 @@ import System.Time
 import Database.HDBC.PostgreSQL.Parser(convertSQL)
 import Database.HDBC.DriverUtils
 import Database.HDBC.PostgreSQL.PTypeConv
+import Database.HDBC.PostgreSQL.Utils
 
 l _ = return ()
 --l m = hPutStrLn stderr ("\n" ++ m)
@@ -170,8 +171,11 @@ ffetchrow sstate = modifyMVar (nextrowmv sstate) dofetchrow
                    then return SqlNull
                    else do text <- pqgetvalue p row icol
                            coltype <- liftM oidToColType $ pqftype p icol
-                           s <- peekCString text
+                           s <- stringUtf8CStr text
                            makeSqlValue coltype s
+
+
+
 
 fgetcoldef cstmt =
     do ncols <- pqnfields cstmt
