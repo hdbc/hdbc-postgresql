@@ -35,10 +35,6 @@ import Data.List
 import Data.Word
 import Data.Maybe
 import Data.Ratio
-import Data.ByteString(packCString, ByteString)
-import Data.Encoding
-import Data.Encoding.UTF8
-import Data.Encoding.ASCII
 import Control.Exception
 import System.IO
 import System.Time
@@ -174,7 +170,7 @@ ffetchrow sstate = modifyMVar (nextrowmv sstate) dofetchrow
                    then return SqlNull
                    else do text <- pqgetvalue p row icol
                            coltype <- liftM oidToColType $ pqftype p icol
-                           s <- packCString text
+                           s <- peekCString text
                            makeSqlValue coltype s
 
 fgetcoldef cstmt =
@@ -259,7 +255,7 @@ foreign import ccall unsafe "libpq-fe.h PQftype"
 
 -- Make a SqlValue for the passed column type and string value, where it is assumed that the value represented is not the Sql null value.
 -- The IO Monad is required only to obtain the local timezone for interpreting date/time values without an explicit timezone.
-makeSqlValue :: SqlTypeId -> ByteString -> IO SqlValue
+makeSqlValue :: SqlTypeId -> String -> IO SqlValue
 makeSqlValue sqltypeid strval =
 
     case sqltypeid of 
@@ -269,22 +265,22 @@ makeSqlValue sqltypeid strval =
             tid == SqlLongVarCharT ||
             tid == SqlWCharT       ||
             tid == SqlWVarCharT    ||
-            tid == SqlWLongVarCharT  -> return $ SqlString $ decode UTF8 strval
+            tid == SqlWLongVarCharT  -> return $ SqlString strval
 
       tid | tid == SqlDecimalT ||
-            tid == SqlNumericT   -> return $ SqlRational (makeRationalFromDecimal $ decode ASCII strval)
+            tid == SqlNumericT   -> return $ SqlRational (makeRationalFromDecimal strval)
 
       tid | tid == SqlSmallIntT ||
             tid == SqlTinyIntT  ||
-            tid == SqlIntegerT     -> return $ SqlInt32 (read $ decode ASCII strval)
+            tid == SqlIntegerT     -> return $ SqlInt32 (read strval)
 
-      SqlBigIntT -> return $ SqlInteger (read $ decode ASCII strval)
+      SqlBigIntT -> return $ SqlInteger (read strval)
 
       tid | tid == SqlRealT   ||
             tid == SqlFloatT  ||
-            tid == SqlDoubleT   -> return $ SqlDouble (read $ decode ASCII strval)
+            tid == SqlDoubleT   -> return $ SqlDouble (read strval)
       
-      SqlBitT -> return $ case (decode ASCII strval) of
+      SqlBitT -> return $ case strval of 
                    't':_ -> SqlBool True
                    'f':_ -> SqlBool False
                    'T':_ -> SqlBool True -- the rest of these are here "just in case", since they are legal as input
@@ -298,28 +294,28 @@ makeSqlValue sqltypeid strval =
             tid == SqlTimestampT   ||
             tid == SqlUTCDateTimeT   ->
                 do
-                  clockTime <- clockTimeFromISODateAndMaybeTime $ decode ASCII strval
+                  clockTime <- clockTimeFromISODateAndMaybeTime strval
                              
                   case clockTime of TOD epochSecs picos -> return $ SqlEpochTime epochSecs
 
 
       -- Times without dates
       tid | tid == SqlTimeT    || 
-            tid == SqlUTCTimeT   -> return $ SqlTimeDiff $ secsTimeDiffFromISOTime $ decode ASCII strval
+            tid == SqlUTCTimeT   -> return $ SqlTimeDiff $ secsTimeDiffFromISOTime strval
       
       -- TODO: There's no proper way to map intervals as understood by postgres currently so we resort to SqlString. 
       -- E.g. a "1 month" interval is not a specific span of time that could be converted to a SqlTimeDiff.
       -- A new SqlValue constructor would be needed (wrapping System.Time.TimeDiff) to really handle intervals properly.
-      SqlIntervalT si -> return $ SqlString $ decode ASCII strval
+      SqlIntervalT si -> return $ SqlString strval
       
       -- TODO: For now we just map the binary types to SqlStrings. New SqlValue constructors are needed to handle these.
       tid | tid == SqlBinaryT        ||
             tid == SqlVarBinaryT     || 
-            tid == SqlLongVarBinaryT    -> return $ SqlByteString strval
+            tid == SqlLongVarBinaryT    -> return $ SqlString strval
 
-      SqlGUIDT -> return $ SqlString $ decode ASCII strval
+      SqlGUIDT -> return $ SqlString strval
 
-      SqlUnknownT s -> return $ SqlByteString strval
+      SqlUnknownT s -> return $ SqlString strval
 
 
 -- Make a rational number from a decimal string representation of the number.
