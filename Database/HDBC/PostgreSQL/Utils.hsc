@@ -33,7 +33,6 @@ import System.Time
 import System.Locale
 import qualified Data.ByteString.UTF8 as Utf8
 import qualified Data.ByteString as B
-import qualified Data.ByteString.Unsafe as B
 
 #include "hdbc-postgresql-helper.h"
 
@@ -100,7 +99,7 @@ stringUtf8CStr c = do
 
 cstrUtf8String :: String -> IO CString
 cstrUtf8String s = do
-    B.unsafeUseAsCStringLen (Utf8.fromString s) $ \(s,len) -> do
+    B.useAsCStringLen (Utf8.fromString s) $ \(s,len) -> do
         res <- mallocBytes (len+1)
         -- copy in
         copyBytes res s len
