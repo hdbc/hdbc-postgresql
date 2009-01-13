@@ -1,43 +1,48 @@
 #!/usr/bin/env runhaskell
 
 \begin{code}
-import Distribution.PackageDescription
 import Distribution.Simple
+import Distribution.PackageDescription
+import Distribution.Version
+
 import Distribution.Simple.LocalBuildInfo
 import Distribution.Simple.Program
-import qualified Distribution.Verbosity as Verbosity
+import Distribution.Verbosity
 
-main = defaultMainWithHooks defaultUserHooks {
-         hookedPrograms = [pgConfigProgram],
-         postConf=configure
-       }
+import Control.Monad
 
-pgConfigProgram = (simpleProgram "pg_config") {
-  programFindVersion = findProgramVersion "--version" $ \str ->
-    -- Invoking "pg_config --version" gives a string like "PostgreSQL 8.0.13"
-    case words str of
-      (_:ver:_) -> 
-          -- Hack: drop off the "RC" bit since Cabal doesn't like it.
-          takeWhile (/= 'R')
-          ver
-      _         -> ""
+main = defaultMainWithHooks simpleUserHooks {
+  hookedPrograms = [pgconfigProgram],
+
+  confHook = \pkg flags -> do
+    lbi <- confHook defaultUserHooks pkg flags
+    bi <- psqlBuildInfo lbi
+    return lbi {
+      localPkgDescr = updatePackageDescription
+                        (Just bi, []) (localPkgDescr lbi)
+    } 
 }
 
-configure _ _ _ lbi = do
-  mb_bi <- pgConfigBuildInfo Verbosity.normal lbi
-  writeHookedBuildInfo "HDBC-postgresql.buildinfo" (mb_bi,[])
-\end{code}
-
-Populate BuildInfo using pg_config tool.
-\begin{code}
-pgConfigBuildInfo verbosity lbi = do
-  (pgConfigProg, _) <- requireProgram verbosity pgConfigProgram
-                       (orLaterVersion $ Version [8] []) (withPrograms lbi)
-  let pg_config = rawSystemProgramStdout verbosity pgConfigProg
-  libDir       <- pg_config ["--libdir"]
-  incDir       <- pg_config ["--includedir"]
-  return $ Just emptyBuildInfo {
-    extraLibDirs = lines libDir,
-    includeDirs  = lines incDir
+pgconfigProgram = (simpleProgram "pgconfig") {
+    programFindLocation = \verbosity -> do
+      pgconfig  <- findProgramOnPath "pgconfig"  verbosity 
+      pg_config <- findProgramOnPath "pg_config" verbosity
+      return (pgconfig `mplus` pg_config)
   }
+
+psqlBuildInfo :: LocalBuildInfo -> IO BuildInfo
+psqlBuildInfo lbi = do
+  (pgconfigProg, _) <- requireProgram verbosity
+                         pgconfigProgram AnyVersion (withPrograms lbi)
+  let pgconfig = rawSystemProgramStdout verbosity pgconfigProg
+
+  incDir <- pgconfig ["--includedir"]
+  libDir <- pgconfig ["--libdir"]
+
+  return emptyBuildInfo {
+    extraLibDirs = [libDir],
+    includeDirs  = [incDir]
+  }
+  where
+    verbosity = normal -- honestly, this is a hack
 \end{code}
