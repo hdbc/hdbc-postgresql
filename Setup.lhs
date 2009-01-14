@@ -9,6 +9,9 @@ import Distribution.Simple.LocalBuildInfo
 import Distribution.Simple.Program
 import Distribution.Verbosity
 
+import Data.Char (isSpace)
+import Data.List (dropWhile,reverse)
+
 import Control.Monad
 
 main = defaultMainWithHooks simpleUserHooks {
@@ -40,9 +43,10 @@ psqlBuildInfo lbi = do
   libDir <- pgconfig ["--libdir"]
 
   return emptyBuildInfo {
-    extraLibDirs = [libDir],
-    includeDirs  = [incDir]
+    extraLibDirs = [strip libDir],
+    includeDirs  = [strip incDir]
   }
   where
     verbosity = normal -- honestly, this is a hack
+    strip x = dropWhile isSpace $ reverse $ dropWhile isSpace $ reverse x
 \end{code}
