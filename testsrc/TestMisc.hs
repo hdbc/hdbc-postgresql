@@ -153,6 +153,15 @@ testnulls = setup $ \dbh ->
                   [SqlInt32 103, SqlString "\xFF", SqlNull],
                   [SqlInt32 104, SqlString "regular", SqlNull]]
        
+testunicode = setup $ \dbh ->
+      do sth <- prepare dbh "INSERT INTO hdbctest2 VALUES (?, ?, ?)"
+         executeMany sth rows
+         finish sth
+         res <- quickQuery dbh "SELECT * from hdbctest2 WHERE testid > 99 ORDER BY testid" []
+         seq (length res) rows @=? res
+    where rows = [[SqlInt32 100, SqlString "foo\x263a", SqlNull],
+                  [SqlInt32 101, SqlString "bar\x00A3", SqlNull],
+                  [SqlInt32 102, SqlString "regular", SqlNull]]
 
 tests = TestList [TestLabel "getColumnNames" testgetColumnNames,
                   TestLabel "describeResult" testdescribeResult,
@@ -167,4 +176,5 @@ tests = TestList [TestLabel "getColumnNames" testgetColumnNames,
                   TestLabel "update rowcount" testrowcount,
                   TestLabel "get tables1" testgetTables1,
                   TestLabel "get tables2" testgetTables2,
-                  TestLabel "nulls" testnulls]
+                  TestLabel "nulls" testnulls,
+                  TestLabel "unicode" testunicode]
