@@ -33,7 +33,10 @@ import System.Time
 import System.Locale
 import qualified Data.ByteString.UTF8 as Utf8
 import qualified Data.ByteString as B
+#ifndef __HUGS__
+-- Hugs includes this in Data.ByteString
 import qualified Data.ByteString.Unsafe as B
+#endif
 
 #include "hdbc-postgresql-helper.h"
 
