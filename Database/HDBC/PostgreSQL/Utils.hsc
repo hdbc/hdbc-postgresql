@@ -110,7 +110,7 @@ cstrUtf8String s = do
         -- copy in
         copyBytes res s len
         -- null terminate
-        poke (plusPtr res len) '\0'
+        poke (plusPtr res len) (0::CChar)
         -- return ptr
         return res
 

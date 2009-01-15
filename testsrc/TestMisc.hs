@@ -161,7 +161,7 @@ testunicode = setup $ \dbh ->
          seq (length res) rows @=? res
     where rows = [[SqlInt32 100, SqlString "foo\x263a", SqlNull],
                   [SqlInt32 101, SqlString "bar\x00A3", SqlNull],
-                  [SqlInt32 102, SqlString "regular", SqlNull]]
+                  [SqlInt32 102, SqlString (take 263 (repeat 'a')), SqlNull]]
 
 tests = TestList [TestLabel "getColumnNames" testgetColumnNames,
                   TestLabel "describeResult" testdescribeResult,
