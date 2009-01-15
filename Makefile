@@ -44,6 +44,9 @@ testsrc/runtests: all $(wildcard testsrc/*.hs) $(wildcard testsrc/*/*.hs) $(wild
 test-ghc6: testsrc/runtests
 	testsrc/runtests
 
+test-ghc6-valgrind: testsrc/runtests
+	valgrind testsrc/runtests
+
 test-hugs: hugsbuild
 	runhugs -98 +o -P$(PWD)/dist/build:$(PWD)/testsrc: testsrc/runtests.hs
 
