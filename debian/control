@@ -1,7 +1,7 @@
 Source: hdbc-postgresql
 Priority: optional
 Maintainer: John Goerzen <jgoerzen@complete.org>
-Build-Depends: debhelper (>= 4.0.0), ghc6 (>= 6.8.2), ghc6 (<< 6.8.2-999), haskell-devscripts (>= 0.6.6), cpphs, haddock, libghc6-hdbc-dev (>= 1.1.6.1), libpq-dev (>= 8.1.1), libghc6-mtl-dev, libghc6-parsec-dev
+Build-Depends: debhelper (>= 4.0.0), ghc6 (>= 6.8.2dfsg1), haskell-devscripts (>= 0.6.15), cpphs, haddock, libghc6-hdbc-dev (>= 1.1.6.2), libpq-dev (>= 8.1.1), libghc6-mtl-dev, libghc6-parsec-dev
 Standards-Version: 3.6.2
 Section: libs
 
