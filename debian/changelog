@@ -1,3 +1,9 @@
+hdbc-postgresql (1.1.6.0.1) unstable; urgency=high
+
+  * Rebuild for newer GHC.
+
+ -- John Goerzen <jgoerzen@complete.org>  Mon, 19 Jan 2009 16:18:56 -0600
+
 hdbc-postgresql (1.1.6.0.0) unstable; urgency=low
 
   * New version with GHC 6.10 compatibility.
