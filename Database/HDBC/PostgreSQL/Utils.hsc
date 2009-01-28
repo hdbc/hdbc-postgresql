@@ -32,7 +32,7 @@ import Foreign.Marshal.Utils
 import Data.Word
 import System.Time
 import System.Locale
-import qualified Data.ByteString.UTF8 as Utf8
+import qualified Data.ByteString.UTF8 as BUTF8
 import qualified Data.ByteString as B
 #ifndef __HUGS__
 -- Hugs includes this in Data.ByteString
@@ -81,8 +81,7 @@ withCStringArr0 inp action = withAnyArr0 convfunc freefunc inp action
                              (formatCalendarTime defaultTimeLocale 
                               (iso8601DateFormat $ Just "%H:%M:%S %Z") 
                               ct) ++"'")
-          convfunc (SqlString s) = cstrUtf8String s
-          convfunc x = newCString (fromSql x)
+          convfunc x = cstrUtf8BString (fromSql x)
           freefunc x =
               if x == nullPtr
                  then return ()
@@ -98,15 +97,9 @@ withAnyArr0 input2ptract freeact inp action =
             (\clist -> mapM_ freeact clist)
             (\clist -> withArray0 nullPtr clist action)
 
-
-stringUtf8CStr :: CString -> IO String
-stringUtf8CStr c = do
-    byteString <- B.packCString c 
-    return (Utf8.toString byteString)
-
-cstrUtf8String :: String -> IO CString
-cstrUtf8String s = do
-    B.unsafeUseAsCStringLen (Utf8.fromString s) $ \(s,len) -> do
+cstrUtf8BString :: B.ByteString -> IO CString
+cstrUtf8BString bs = do
+    B.unsafeUseAsCStringLen bs $ \(s,len) -> do
         res <- mallocBytes (len+1)
         -- copy in
         copyBytes res s len
