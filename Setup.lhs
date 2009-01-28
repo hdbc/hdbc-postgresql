@@ -22,7 +22,7 @@ main = defaultMainWithHooks simpleUserHooks {
     bi <- psqlBuildInfo lbi
     return lbi {
       localPkgDescr = updatePackageDescription
-                        (Just bi, []) (localPkgDescr lbi)
+                        (Just bi, [(f"runtests", bi)]) (localPkgDescr lbi)
     } 
 }
 
