@@ -20,6 +20,7 @@ module Database.HDBC.PostgreSQL.Utils where
 import Foreign.C.String
 import Foreign.ForeignPtr
 import Foreign.Ptr
+import Database.HDBC(throwSqlError)
 import Database.HDBC.Types
 import Database.HDBC.PostgreSQL.Types
 import Foreign.C.Types
