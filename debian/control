@@ -21,8 +21,8 @@ Description: PostgreSQL HDBC (Haskell Database Connectivity) Driver for GHC
  This package provides the PostgreSQL database driver for HDBC under GHC.
 
 Package: haskell-hdbc-postgresql-doc
-Section: docs
-Architecture: aall
+Section: doc
+Architecture: all
 Depends: haskell-hdbc-doc (>= 2.0.0), ${haskell:Depends}, ${shlibs:Depends}, ${misc:Depends}
 Description: PostgreSQL HDBC (Haskell Database Connectivity) documentation
  HDBC provides an abstraction layer between Haskell programs and SQL
