@@ -1,6 +1,5 @@
 #!/usr/bin/env runhaskell
 
-\begin{code}
 import Distribution.Simple
 import Distribution.PackageDescription
 import Distribution.Version
@@ -49,4 +48,3 @@ psqlBuildInfo lbi = do
   where
     verbosity = normal -- honestly, this is a hack
     strip x = dropWhile isSpace $ reverse $ dropWhile isSpace $ reverse x
-\end{code}

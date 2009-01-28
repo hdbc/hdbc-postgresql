@@ -1,62 +1,36 @@
-# Copyright (C) 2004 - 2005 John Goerzen <jgoerzen@complete.org>
-#
-#    This library is free software; you can redistribute it and/or
-#    modify it under the terms of the GNU Lesser General Public
-#    License as published by the Free Software Foundation; either
-#    version 2.1 of the License, or (at your option) any later version.
-#
-#    This library is distributed in the hope that it will be useful,
-#    but WITHOUT ANY WARRANTY; without even the implied warranty of
-#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-#    Lesser General Public License for more details.
-#
-#    You should have received a copy of the GNU Lesser General Public
-#    License along with this library; if not, write to the Free Software
-#    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+all: setup
+	@echo "Please use Cabal to build this package; not make."
+	./setup configure
+	./setup build
 
-GHCPARMS := -fglasgow-exts
+setup: Setup.hs
+	ghc --make -package Cabal -o setup Setup.hs
 
-.PHONY: all hugsbuild
-all:
-	./Setup.lhs configure
-	./Setup.lhs build
-
-hugsbuild: 
-	./Setup.lhs configure --hugs
-	./Setup.lhs build
-
-install:
-	./Setup.lhs install
-
-setup: Setup.lhs HDBC-postgresql.cabal
-	ghc -package Cabal Setup.lhs -o setup
+install: setup
+	./setup install
 
 clean:
-	-./Setup.lhs clean
-	-rm -rf html `find . -name "*.o"` `find . -name "*.hi"` \
-		`find . -name "*~"` *.a setup dist testsrc/runtests \
+	-runghc Setup.hs clean
+	-rm -rf html `find . -name "*.o"` `find . -name "*.hi" | grep -v debian` \
+		`find . -name "*~" | grep -v debian` *.a setup dist testsrc/runtests \
 		local-pkg doctmp
 	-rm -rf testtmp/* testtmp*
 
-testsrc/runtests: all $(wildcard testsrc/*.hs) $(wildcard testsrc/*/*.hs) $(wildcard testsrc/*/*/*.hs)
-	cd testsrc && ghc --make -package mtl -package HUnit -package MissingH -package HDBC -lpq $(GHCPARMS) -o runtests  -i../dist/build:.. ../dist/build/hdbc-postgresql-helper.o runtests.hs
+.PHONY: test
+test: test-ghc test-hugs
+	@echo ""
+	@echo "All tests pass."
 
-test-ghc6: testsrc/runtests
-	testsrc/runtests
+test-hugs: setup
+	@echo " ****** Running hugs tests"
+	./setup configure -f buildtests --hugs --extra-include-dirs=/usr/lib/hugs/include
+	./setup build
+	runhugs -98 +o -P$(PWD)/dist/scratch:$(PWD)/dist/scratch/programs/runtests: \
+		dist/scratch/programs/runtests/Main.hs
 
-test-ghc6-valgrind: testsrc/runtests
-	valgrind testsrc/runtests
-
-test-hugs: hugsbuild
-	runhugs -98 +o -P$(PWD)/dist/build:$(PWD)/testsrc: testsrc/runtests.hs
-
-interact-hugs:
-	hugs -98 +o -P$(PWD)/dist/build:
-
-interact-ghci: all
-	ghci -idist/build -Ldist/build $(GHCPARMS)
-
-interact: interact-hugs
-
-test: test-ghc6 test-hugs
-
+test-ghc: setup
+	@echo " ****** Building GHC tests"
+	./setup configure -f buildtests
+	./setup build
+	@echo " ****** Running GHC tests"
+	./dist/build/runtests/runtests
