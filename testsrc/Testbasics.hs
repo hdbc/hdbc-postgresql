@@ -3,7 +3,7 @@ import Test.HUnit
 import Database.HDBC
 import TestUtils
 import System.IO
-import Control.Exception
+import Control.Exception hiding (catch)
 
 openClosedb = sqlTestCase $ 
     do dbh <- connectDB
@@ -138,8 +138,9 @@ testWithTransaction = dbTestCase (\dbh ->
        fetchAllRows qrysth >>= (assertEqual "initial commit" [[toSql "0"]])
        
        -- Let's try a rollback.
-       try $ withTransaction dbh (\_ -> do executeMany sth rows
-                                           fail "Foo")
+       catch (withTransaction dbh (\_ -> do executeMany sth rows
+                                            fail "Foo"))
+             (\_ -> return ())
        execute qrysth []
        fetchAllRows qrysth >>= (assertEqual "rollback" [[SqlString "0"]])
 
