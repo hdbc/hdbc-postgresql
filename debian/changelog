@@ -1,3 +1,9 @@
+hdbc-postgresql (2.0.0.0) unstable; urgency=low
+
+  * New upstream release.
+
+ -- John Goerzen <jgoerzen@complete.org>  Wed, 28 Jan 2009 13:19:29 -0600
+
 hdbc-postgresql (1.1.6.0.1) unstable; urgency=high
 
   * Rebuild for newer GHC.

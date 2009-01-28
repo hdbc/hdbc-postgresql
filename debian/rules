@@ -75,7 +75,34 @@ install: build
 
 # Build architecture-independent files here.
 binary-indep: build install
-# Nothing to do by default.
+	dh_testdir
+	dh_testroot
+	dh_installchangelogs -i
+	dh_installdocs -i README.txt
+	dh_installexamples -i
+#	dh_install
+#	dh_installmenu
+#	dh_installdebconf	
+#	dh_installlogrotate
+#	dh_installemacsen
+#	dh_installpam
+#	dh_installmime
+#	dh_installinit
+#	dh_installcron
+#	dh_installinfo
+	dh_installman -i
+	dh_link -i
+	dh_strip -i
+	dh_compress -i
+	dh_fixperms -i
+#	dh_perl
+#	dh_python
+#	dh_makeshlibs
+	dh_installdeb -i
+	dh_shlibdeps -i
+	dh_gencontrol -i
+	dh_md5sums -i
+	dh_builddeb -i
 
 # Build architecture-dependent files here.
 binary-arch: build install
