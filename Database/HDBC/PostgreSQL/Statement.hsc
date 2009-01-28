@@ -64,7 +64,7 @@ newSth indbo mchildren query =
        newnextrowmv <- newMVar (-1)
        newcoldefmv <- newMVar []
        usequery <- case convertSQL query of
-                      Left errstr -> throwDyn $ SqlError
+                      Left errstr -> throwSqlError $ SqlError
                                       {seState = "",
                                        seNativeError = (-1),
                                        seErrorMsg = "hdbc prepare: " ++ 
@@ -136,7 +136,7 @@ fexecute sstate args = withConn (dbo sstate) $ \cconn ->
                  statusmsg <- peekCString csstatusmsg
                  errormsg <- peekCString cserrormsg
                  pqclear_raw resptr
-                 throwDyn $ 
+                 throwSqlError $ 
                           SqlError {seState = "",
                                     seNativeError = fromIntegral status,
                                     seErrorMsg = "execute: " ++ statusmsg ++

@@ -1,9 +1,9 @@
 Name: HDBC-postgresql
-Version: 1.1.6.0.1
+Version: 2.0.0.0
 License: LGPL
 Maintainer: John Goerzen <jgoerzen@complete.org>
 Author: John Goerzen
-Copyright: Copyright (c) 2005-2008 John Goerzen
+Copyright: Copyright (c) 2005-2009 John Goerzen
 license-file: COPYRIGHT
 extra-source-files: COPYING, hdbc-postgresql-helper.h, pgtypes.h
 homepage: http://software.complete.org/hdbc-postgres
@@ -17,6 +17,9 @@ Cabal-Version: >=1.2
 
 Flag splitBase
   description: Choose the new smaller, split-up package.
+Flag buildtests
+  description: Build the executable to run unit tests
+  default: False
 
 Library
   Exposed-Modules: Database.HDBC.PostgreSQL
@@ -27,10 +30,8 @@ Library
     Database.HDBC.PostgreSQL.Utils,
     Database.HDBC.PostgreSQL.Parser,
     Database.HDBC.PostgreSQL.PTypeConv
-  --Extensions: ExistentialQuantification, AllowOverlappingInstances,
-  --    AllowUndecidableInstances, CPP
   Extensions: ExistentialQuantification, ForeignFunctionInterface
-  Build-Depends: base, mtl, HDBC>=1.1.0, parsec, utf8-string,
+  Build-Depends: base, mtl, HDBC>=2.0.0, parsec, utf8-string,
                  bytestring, old-time, old-locale
   if flag(splitBase)
     Build-Depends: base >= 3 && < 4, old-time
@@ -39,3 +40,27 @@ Library
   Extra-Libraries: pq
   C-Sources: hdbc-postgresql-helper.c
   Include-Dirs: .
+  GHC-Options: -O2
+
+Executable runtests
+   if flag(buildtests)
+      Buildable: True
+   else
+      Buildable: False
+   Build-Depends: HUnit, QuickCheck, testpack, containers
+   Main-Is: runtests.hs
+   Other-Modules: SpecificDB,
+                  SpecificDBTests,
+                  TestMisc,
+                  TestSbasics,
+                  TestUtils,
+                  Testbasics,
+                  Tests
+   C-Sources: hdbc-postgresql-helper.c
+   include-dirs: .
+   Extra-Libraries: pq
+   Hs-Source-Dirs: ., testsrc
+   GHC-Options: -O2
+   Extensions: ExistentialQuantification,
+               ForeignFunctionInterface
+

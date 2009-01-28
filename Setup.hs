@@ -19,6 +19,7 @@ main = defaultMainWithHooks simpleUserHooks {
   confHook = \pkg flags -> do
     lbi <- confHook defaultUserHooks pkg flags
     bi <- psqlBuildInfo lbi
+    
     return lbi {
       localPkgDescr = updatePackageDescription
                         (Just bi, [(f"runtests", bi)]) (localPkgDescr lbi)
