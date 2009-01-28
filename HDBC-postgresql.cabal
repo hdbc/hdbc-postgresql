@@ -49,7 +49,14 @@ Executable runtests
       Buildable: False
    Build-Depends: HUnit, QuickCheck, testpack, containers
    Main-Is: runtests.hs
-   Other-Modules: SpecificDB,
+   Other-Modules: Database.HDBC.PostgreSQL.Connection,
+                  Database.HDBC.PostgreSQL.ConnectionImpl,
+                  Database.HDBC.PostgreSQL.Statement,
+                  Database.HDBC.PostgreSQL.Types,
+                  Database.HDBC.PostgreSQL.Utils,
+                  Database.HDBC.PostgreSQL.Parser,
+                  Database.HDBC.PostgreSQL.PTypeConv,
+                  SpecificDB,
                   SpecificDBTests,
                   TestMisc,
                   TestSbasics,
