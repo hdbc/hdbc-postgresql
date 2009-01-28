@@ -44,9 +44,9 @@ raiseError :: String -> Word32 -> (Ptr CConn) -> IO a
 raiseError msg code cconn =
     do rc <- pqerrorMessage cconn
        str <- peekCString rc
-       throwDyn $ SqlError {seState = "",
-                            seNativeError = fromIntegral code,
-                            seErrorMsg = msg ++ ": " ++ str}
+       throwSqlError $ SqlError {seState = "",
+                                 seNativeError = fromIntegral code,
+                                 seErrorMsg = msg ++ ": " ++ str}
 
 {- This is a little hairy.
 
