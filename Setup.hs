@@ -22,7 +22,7 @@ main = defaultMainWithHooks simpleUserHooks {
     
     return lbi {
       localPkgDescr = updatePackageDescription
-                        (Just bi, [(f"runtests", bi)]) (localPkgDescr lbi)
+                        (Just bi, [("runtests", bi)]) (localPkgDescr lbi)
     } 
 }
 
