@@ -41,6 +41,8 @@ import Foreign.Ptr
 import Data.Word
 import Data.Maybe
 import Control.Concurrent.MVar
+import qualified Data.ByteString as B
+import qualified Data.ByteString.UTF8 as BUTF8
 
 #include <libpq-fe.h>
 #include <pg_config.h>
