@@ -2,7 +2,7 @@
 {-# CFILES hdbc-postgresql-helper.c #-}
 -- Above line for hugs
 {-
-Copyright (C) 2005 John Goerzen <jgoerzen@complete.org>
+Copyright (C) 2005-2009 John Goerzen <jgoerzen@complete.org>
 
     This library is free software; you can redistribute it and/or
     modify it under the terms of the GNU Lesser General Public
@@ -96,8 +96,8 @@ fdescribeResult sstate =
 {- For now, we try to just  handle things as simply as possible.
 FIXME lots of room for improvement here (types, etc). -}
 fexecute sstate args = withConn (dbo sstate) $ \cconn ->
-                       withCString (squery sstate) $ \cquery ->
-                       withCStringArr0 args $ \cargs ->
+                       B.useAsCString (BUTF8.fromString (squery sstate)) $ \cquery ->
+                       withCStringArr0 args $ \cargs -> -- wichSTringArr0 uses UTF-8
     do l "in fexecute"
        public_ffinish sstate    -- Sets nextrowmv to -1
        resptr <- pqexecParams cconn cquery
@@ -135,8 +135,12 @@ fexecute sstate args = withConn (dbo sstate) $ \cconn ->
          _ -> do l $ "PGRES ERROR: " ++ squery sstate
                  csstatusmsg <- pqresStatus status
                  cserrormsg <- pqresultErrorMessage resptr
-                 statusmsg <- peekCString csstatusmsg
-                 errormsg <- peekCString cserrormsg
+                 
+                 statusmsgbs <- B.packCString csstatusmsg
+                 errormsgbs <- B.packCString cserrormsg
+                 let statusmsg = BUTF8.toString statusmsgbs
+                 let errormsg = BUTF8.toString errormsgbs
+
                  pqclear_raw resptr
                  throwSqlError $ 
                           SqlError {seState = "",
@@ -182,7 +186,8 @@ fgetcoldef cstmt =
     do ncols <- pqnfields cstmt
        mapM desccol [0..(ncols - 1)]
     where desccol i =
-              do colname <- (pqfname cstmt i >>= peekCString)
+              do colname <- (pqfname cstmt i >>= B.packCString >>= 
+                             return . BUTF8.toString)
                  coltype <- pqftype cstmt i
                  --coloctets <- pqfsize
                  let coldef = oidToColDef coltype

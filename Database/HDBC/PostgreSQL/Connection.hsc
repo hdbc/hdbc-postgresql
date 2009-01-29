@@ -50,7 +50,7 @@ import Control.Concurrent.MVar
 See <http://www.postgresql.org/docs/8.1/static/libpq.html#LIBPQ-CONNECT> for the meaning
 of the connection string. -}
 connectPostgreSQL :: String -> IO Impl.Connection
-connectPostgreSQL args = withCString args $
+connectPostgreSQL args = B.useAsCString (BUTF8.fromString args) $
   \cs -> do ptr <- pqconnectdb cs
             status <- pqstatus ptr
             wrappedptr <- wrapconn ptr nullPtr

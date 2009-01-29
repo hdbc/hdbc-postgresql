@@ -1,5 +1,5 @@
 {- -*- mode: haskell; -*- 
-Copyright (C) 2005 John Goerzen <jgoerzen@complete.org>
+Copyright (C) 2005-2009 John Goerzen <jgoerzen@complete.org>
 
     This library is free software; you can redistribute it and/or
     modify it under the terms of the GNU Lesser General Public
@@ -44,7 +44,8 @@ import qualified Data.ByteString.Unsafe as B
 raiseError :: String -> Word32 -> (Ptr CConn) -> IO a
 raiseError msg code cconn =
     do rc <- pqerrorMessage cconn
-       str <- peekCString rc
+       bs <- B.packCString rc
+       let str = BUTF8.toString bs
        throwSqlError $ SqlError {seState = "",
                                  seNativeError = fromIntegral code,
                                  seErrorMsg = msg ++ ": " ++ str}
