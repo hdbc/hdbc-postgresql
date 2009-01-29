@@ -159,7 +159,7 @@ testunicode = setup $ \dbh ->
          finish sth
          res <- quickQuery dbh "SELECT * from hdbctest2 WHERE testid > 99 ORDER BY testid" []
          seq (length res) rows @=? res
-    where rows = [[SqlInt32 100, SqlString "foo\x263a", SqlNull],
+    where rows = [[SqlInt32 100, SqlString "foo\x00f6", SqlNull],
                   [SqlInt32 101, SqlString "bar\x00A3", SqlNull],
                   [SqlInt32 102, SqlString (take 263 (repeat 'a')), SqlNull]]
 
