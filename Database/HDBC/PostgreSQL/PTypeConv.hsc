@@ -99,5 +99,6 @@ oidToColType oid =
 
       #{const PG_TYPE_TINTERVAL} -> SqlIntervalT SqlIntervalMonthT -- SqlIntervalMonthT chosen arbitrarily in these two. PG allows any parts
       #{const PG_TYPE_RELTIME}   -> SqlIntervalT SqlIntervalMonthT -- of an interval (microsecond to millennium) to be specified together.
+      1186 -> SqlIntervalT SqlIntervalMonthT
       #{const PG_TYPE_BOOL} -> SqlBitT
       x -> SqlUnknownT (show x)

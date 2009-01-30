@@ -327,12 +327,11 @@ makeSqlValue sqltypeid bstrval =
                    timestr = strval ++ "00"
                in return $ SqlZonedLocalTimeOfDay a b)
 
-
-      
-      -- TODO: There's no proper way to map intervals as understood by postgres currently so we resort to SqlString. 
-      -- E.g. a "1 month" interval is not a specific span of time that could be converted to a SqlTimeDiff.
-      -- A new SqlValue constructor would be needed (wrapping System.Time.TimeDiff) to really handle intervals properly.
-      SqlIntervalT si -> return $ SqlByteString bstrval
+      SqlIntervalT si -> return $ SqlDiffTime $ fromInteger $ 
+                         case split ':' strval of 
+                           [h, m, s] -> (read h) * 60 * 60 +
+                                        (read m) * 60 +
+                                        (read s)
       
       -- TODO: For now we just map the binary types to SqlByteStrings. New SqlValue constructors are needed to handle these.
       tid | tid == SqlBinaryT        ||
@@ -356,3 +355,6 @@ makeRationalFromDecimal s =
         in
           num % den
 
+split :: Char -> String -> [String]
+split delim inp =
+    lines . map (\x -> if x == delim then '\n' else x) $ inp
