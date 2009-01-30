@@ -28,6 +28,36 @@ Copyright (C) 2005 John Goerzen <jgoerzen@complete.org>
 HDBC driver interface for PostgreSQL 8.x
 
 Written by John Goerzen, jgoerzen\@complete.org
+
+/NOTE ON DATES AND TIMES/
+
+The recommended correspondence between PostgreSQL date and time types and HDBC SqlValue
+types is:
+
+* SqlLocalDate: DATE
+
+* SqlLocalTimeOfDay: TIME WITHOUT TIME ZONE
+
+* SqlZonedLocalTimeOfDay: TIME WITH TIME ZONE
+
+* SqlLocalTime: TIMESTAMP WITHOUT TIME ZONE
+
+* SqlZonedTime: TIMESTAMP WITH TIME ZONE
+
+* SqlUTCTime: TIMESTAMP WITH TIME ZONE
+
+* SqlDiffTime: INTERVAL
+
+* SqlPOSIXTime: INTEGER
+
+* SqlEpochTime: INTEGER
+
+* SqlTimeDiff: INTERVAL
+
+Other combinations are possible, and may even be converted automatically.
+The above simply represents the types that seem the most logical correspondence,
+and thus are tested by the HDBC-PostgreSQL test suite.
+
 -}
 
 module Database.HDBC.PostgreSQL
