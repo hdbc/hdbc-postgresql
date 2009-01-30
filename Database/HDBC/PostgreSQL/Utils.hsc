@@ -82,7 +82,7 @@ withCStringArr0 inp action = withAnyArr0 convfunc freefunc inp action
                                                 fromSql y ++ "'")
 -}
           convfunc y@(SqlUTCTime _) = convfunc (SqlZonedTime (fromSql y))
-          convfunc y@(SqlPOSIXTime _) = convfunc (SqlZonedTime (fromSql y))
+          convfunc y@(SqlPOSIXTime _) = convfunc (SqlInteger (fromSql y))
           convfunc y@(SqlEpochTime _) = convfunc (SqlZonedTime (fromSql y))
           convfunc x = cstrUtf8BString (fromSql x)
           freefunc x =
