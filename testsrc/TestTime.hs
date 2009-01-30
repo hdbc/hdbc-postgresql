@@ -22,6 +22,9 @@ baseDay = localDay baseLocalTime
 baseTimeOfDay :: TimeOfDay
 baseTimeOfDay = localTimeOfDay baseLocalTime
 
+baseZonedTimeOfDay :: (TimeOfDay, TimeZone)
+baseZonedTimeOfDay = fromSql (SqlZonedTime baseZonedTime)
+
 baseLocalTime :: LocalTime
 baseLocalTime = zonedTimeToLocalTime baseZonedTime
 
@@ -71,6 +74,7 @@ mkTest label inputdata convfunc =
 
 tests = TestList [mkTest "Day" baseDay toSql,
                   mkTest "TimeOfDay" baseTimeOfDay toSql,
+                  mkTest "ZonedTimeOfDay" baseZonedTimeOfDay toSql,
                   mkTest "LocalTime" baseLocalTime toSql,
                   mkTest "ZonedTime" baseZonedTime toSql,
                   mkTest "UTCTime" baseUTCTime toSql,
