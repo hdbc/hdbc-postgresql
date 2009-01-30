@@ -47,7 +47,8 @@ Executable runtests
       Buildable: True
    else
       Buildable: False
-   Build-Depends: HUnit, QuickCheck, testpack, containers
+   Build-Depends: HUnit, QuickCheck, testpack, containers,
+                  convertible, time, old-locale
    Main-Is: runtests.hs
    Other-Modules: Database.HDBC.PostgreSQL.Connection,
                   Database.HDBC.PostgreSQL.ConnectionImpl,
