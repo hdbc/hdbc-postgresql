@@ -12,25 +12,44 @@ import SpecificDB
 import System.Locale
 import qualified System.Time as ST
 
-baseZT :: ZonedTime
-baseZT = fromJust $ parseTime defaultTimeLocale (iso8601DateFormat (Just "%T %z"))
-         "1989-08-01 15:33:01 -0500"
+instance Eq ZonedTime where
+    a == b = zonedTimeToUTC a == zonedTimeToUTC b &&
+             zonedTimeZone a == zonedTimeZone b
 
-baseUTC :: UTCTime
-baseUTC = convert baseZT
+baseDay :: Day
+baseDay = localDay baseLocalTime
 
-basePT :: POSIXTime
-basePT = convert baseZT
+baseTimeOfDay :: TimeOfDay
+baseTimeOfDay = localTimeOfDay baseLocalTime
 
-baseCT :: ST.ClockTime
-baseCT = convert baseZT
+baseLocalTime :: LocalTime
+baseLocalTime = zonedTimeToLocalTime baseZonedTime
 
-baseCalT :: ST.CalendarTime
-baseCalT = convert baseZT
+baseZonedTime :: ZonedTime
+baseZonedTime = fromJust $ parseTime defaultTimeLocale (iso8601DateFormat (Just "%T %z"))
+                 "1989-08-01 15:33:01 -0500"
+
+baseUTCTime :: UTCTime
+baseUTCTime = convert baseZonedTime
+
+baseDiffTime :: NominalDiffTime
+baseDiffTime = basePOSIXTime
+
+basePOSIXTime :: POSIXTime
+basePOSIXTime = convert baseZonedTime
+
+baseClockTime :: ST.ClockTime
+baseClockTime = convert baseZonedTime
+
+baseCalendarTime :: ST.CalendarTime
+baseCalendarTime = convert baseZonedTime
+
+baseTimeDiff :: ST.TimeDiff
+baseTimeDiff = convert baseDiffTime
 
 rowdata t = [[SqlInt32 100, toSql t, SqlNull]]
 
-testDTType inputdata = dbTestCase $ \dbh ->
+testDTType inputdata convToSqlValue = dbTestCase $ \dbh ->
     do run dbh ("CREATE TABLE hdbctesttime (testid INTEGER PRIMARY KEY NOT NULL, \
                 \testvalue " ++ dateTimeTypeOfSqlValue value ++ ")") []
        finally (testIt dbh) (do run dbh "DROP TABLE hdbctesttime" []
@@ -45,9 +64,19 @@ testDTType inputdata = dbTestCase $ \dbh ->
                    [[testidsv, testvaluesv]] -> 
                        do assertEqual "testid" (5::Int) (fromSql testidsv)
                           assertEqual "testvalue" inputdata (fromSql testvaluesv)
-          value = toSql inputdata
+          value = convToSqlValue inputdata
 
-mkTest label inputdata =
-    TestLabel label (testDTType inputdata)
+mkTest label inputdata convfunc =
+    TestLabel label (testDTType inputdata convfunc)
 
-tests = TestList [mkTest "POSIXTime" basePT]
+tests = TestList [mkTest "Day" baseDay toSql,
+                  mkTest "TimeOfDay" baseTimeOfDay toSql,
+                  mkTest "LocalTime" baseLocalTime toSql,
+                  mkTest "ZonedTime" baseZonedTime toSql,
+                  mkTest "UTCTime" baseUTCTime toSql,
+                  mkTest "DiffTime" baseDiffTime toSql,
+                  mkTest "POSIXTime" basePOSIXTime posixToSql,
+                  mkTest "ClockTime" baseClockTime toSql,
+                  mkTest "CalendarTime" baseCalendarTime toSql,
+                  mkTest "TimeDiff" baseTimeDiff toSql
+                 ]
