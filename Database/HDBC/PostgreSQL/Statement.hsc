@@ -327,11 +327,12 @@ makeSqlValue sqltypeid bstrval =
                    timestr = strval ++ "00"
                in return $ SqlZonedLocalTimeOfDay a b)
 
-      SqlIntervalT si -> return $ SqlDiffTime $ fromInteger $ 
+      SqlIntervalT _ -> return $ SqlDiffTime $ fromInteger $ 
                          case split ':' strval of 
                            [h, m, s] -> (read h) * 60 * 60 +
                                         (read m) * 60 +
                                         (read s)
+                           x -> error $ "PostgreSQL Statement.hsc: Couldn't parse interval: " ++ strval
       
       -- TODO: For now we just map the binary types to SqlByteStrings. New SqlValue constructors are needed to handle these.
       tid | tid == SqlBinaryT        ||
@@ -340,7 +341,7 @@ makeSqlValue sqltypeid bstrval =
 
       SqlGUIDT -> return $ SqlByteString bstrval
 
-      SqlUnknownT s -> return $ SqlByteString bstrval
+      SqlUnknownT _ -> return $ SqlByteString bstrval
 
 
 -- Make a rational number from a decimal string representation of the number.
@@ -351,7 +352,7 @@ makeRationalFromDecimal s =
       Just dotix -> 
         let (nstr,'.':dstr) = splitAt dotix s
             num = (read $ nstr ++ dstr)::Integer
-            den = 10^(genericLength dstr) :: Integer
+            den = 10^((genericLength dstr) :: Integer)
         in
           num % den
 

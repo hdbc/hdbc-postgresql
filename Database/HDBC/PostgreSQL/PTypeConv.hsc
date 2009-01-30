@@ -45,7 +45,7 @@ colDescForPGAttr atttypeid attlen formattedtype attnotnull =
     where
       maybeExtractFirstParenthesizedNumber s = case extractParenthesizedInts s of n:_ -> Just n; _ -> Nothing
 
-      maybeExtractSecondParenthesizedNumber s = case extractParenthesizedInts s of n1:n2:_ -> Just n2; _ -> Nothing
+      maybeExtractSecondParenthesizedNumber s = case extractParenthesizedInts s of _:n2:_ -> Just n2; _ -> Nothing
 
       extractParenthesizedInts :: String -> [Int]
       extractParenthesizedInts s =

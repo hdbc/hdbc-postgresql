@@ -23,7 +23,6 @@ module Database.HDBC.PostgreSQL.Connection
 	(connectPostgreSQL, Impl.Connection())
  where
 
-import Database.HDBC.Types
 import Database.HDBC
 import Database.HDBC.DriverUtils
 import Database.HDBC.ColTypes
@@ -33,8 +32,6 @@ import Database.HDBC.PostgreSQL.Statement
 import Database.HDBC.PostgreSQL.PTypeConv
 import Foreign.C.Types
 import Foreign.C.String
-import Foreign.Marshal
-import Foreign.Storable
 import Database.HDBC.PostgreSQL.Utils
 import Foreign.ForeignPtr
 import Foreign.Ptr
@@ -96,14 +93,18 @@ mkConn args conn = withConn conn $
 begin_transaction :: Conn -> ChildList -> IO ()
 begin_transaction o children = frun o children "BEGIN" [] >> return ()
 
+frun :: Conn -> ChildList -> String -> [SqlValue] -> IO Integer
 frun o children query args =
     do sth <- newSth o children query
        res <- execute sth args
        finish sth
        return res
 
+fcommit :: Conn -> ChildList -> IO ()
 fcommit o cl = do frun o cl "COMMIT" []
                   begin_transaction o cl
+
+frollback :: Conn -> ChildList -> IO ()
 frollback o cl =  do frun o cl "ROLLBACK" []
                      begin_transaction o cl
 
@@ -114,6 +115,7 @@ fgetTables conn children =
        let res = map fromSql $ concat res1
        return $ seq (length res) res
 
+fdescribeTable :: Conn -> ChildList -> String -> IO [(String, SqlColDesc)]
 fdescribeTable o cl table = fdescribeSchemaTable o cl Nothing table
 
 fdescribeSchemaTable :: Conn -> ChildList -> Maybe String -> String -> IO [(String, SqlColDesc)]
@@ -136,6 +138,7 @@ fdescribeSchemaTable o cl maybeSchema table =
           error $ "Got unexpected result from pg_attribute: " ++ show x
          
 
+fdisconnect :: Conn -> ChildList -> IO ()
 fdisconnect conn mchildren = 
     do closeAllChildren mchildren
        withRawConn conn $ pqfinish

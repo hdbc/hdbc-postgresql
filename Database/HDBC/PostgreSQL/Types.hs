@@ -1,7 +1,6 @@
 module Database.HDBC.PostgreSQL.Types
 where
 
-import Foreign.ForeignPtr
 import Foreign
 
 data CConn = CConn
