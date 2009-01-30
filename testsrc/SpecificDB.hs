@@ -10,6 +10,7 @@ connectDB =
 dateTimeTypeOfSqlValue :: SqlValue -> String
 dateTimeTypeOfSqlValue (SqlLocalDate _) = "date"
 dateTimeTypeOfSqlValue (SqlLocalTimeOfDay _) = "time without time zone"
+dateTimeTypeOfSqlValue (SqlZonedLocalTimeOfDay _ _) = "time with time zone"
 dateTimeTypeOfSqlValue (SqlLocalTime _) = "timestamp without time zone"
 dateTimeTypeOfSqlValue (SqlZonedTime _) = "timestamp with time zone"
 dateTimeTypeOfSqlValue (SqlUTCTime _) = "timestamp without time zone"

@@ -40,7 +40,7 @@ Library
   Extra-Libraries: pq
   C-Sources: hdbc-postgresql-helper.c
   Include-Dirs: .
-  GHC-Options: -O2
+  GHC-Options: -O2 -Wall
 
 Executable runtests
    if flag(buildtests)
