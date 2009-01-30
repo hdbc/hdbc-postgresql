@@ -30,8 +30,6 @@ import Foreign.Marshal.Array
 import Foreign.Marshal.Alloc
 import Foreign.Marshal.Utils
 import Data.Word
-import System.Time
-import System.Locale
 import qualified Data.ByteString.UTF8 as BUTF8
 import qualified Data.ByteString as B
 #ifndef __HUGS__

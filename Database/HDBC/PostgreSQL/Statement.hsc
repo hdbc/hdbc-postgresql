@@ -28,16 +28,12 @@ import Foreign.ForeignPtr
 import Foreign.Ptr
 import Control.Concurrent.MVar
 import Foreign.C.String
-import Foreign.Marshal
-import Foreign.Storable
 import Control.Monad
 import Data.List
 import Data.Word
 import Data.Maybe
 import Data.Ratio
-import Control.Exception
 import System.IO
-import System.Time
 import qualified Data.ByteString as B
 import qualified Data.ByteString.UTF8 as BUTF8
 import Database.HDBC.PostgreSQL.Parser(convertSQL)
@@ -88,15 +84,18 @@ newSth indbo mchildren query =
        addChild mchildren retval
        return retval
 
+fgetColumnNames :: SState -> IO [(String)]
 fgetColumnNames sstate = 
     do c <- readMVar (coldefmv sstate)
        return (map fst c)
 
+fdescribeResult :: SState -> IO [(String, SqlColDesc)]
 fdescribeResult sstate = 
     readMVar (coldefmv sstate)
 
 {- For now, we try to just  handle things as simply as possible.
 FIXME lots of room for improvement here (types, etc). -}
+fexecute :: (Num a, Read a) => SState -> [SqlValue] -> IO a
 fexecute sstate args = withConn (dbo sstate) $ \cconn ->
                        B.useAsCString (BUTF8.fromString (squery sstate)) $ \cquery ->
                        withCStringArr0 args $ \cargs -> -- wichSTringArr0 uses UTF-8
@@ -184,6 +183,7 @@ ffetchrow sstate = modifyMVar (nextrowmv sstate) dofetchrow
 
 
 
+fgetcoldef :: Ptr CStmt -> IO [(String, SqlColDesc)]
 fgetcoldef cstmt =
     do ncols <- pqnfields cstmt
        mapM desccol [0..(ncols - 1)]
@@ -201,6 +201,7 @@ fexecutemany sstate arglist =
     mapM_ (fexecute sstate) arglist >> return ()
 
 -- Finish and change state
+public_ffinish :: SState -> IO ()
 public_ffinish sstate = 
     do l "public_ffinish"
        swapMVar (nextrowmv sstate) (-1)
@@ -332,7 +333,7 @@ makeSqlValue sqltypeid bstrval =
                            [h, m, s] -> (read h) * 60 * 60 +
                                         (read m) * 60 +
                                         (read s)
-                           x -> error $ "PostgreSQL Statement.hsc: Couldn't parse interval: " ++ strval
+                           _ -> error $ "PostgreSQL Statement.hsc: Couldn't parse interval: " ++ strval
       
       -- TODO: For now we just map the binary types to SqlByteStrings. New SqlValue constructors are needed to handle these.
       tid | tid == SqlBinaryT        ||

@@ -18,7 +18,6 @@ Copyright (C) 2005-2007 John Goerzen <jgoerzen@complete.org>
 
 module Database.HDBC.PostgreSQL.ConnectionImpl where
 
-import qualified Database.HDBC.Statement as Types
 import qualified Database.HDBC.Types as Types
 import Database.HDBC.ColTypes as ColTypes
 
