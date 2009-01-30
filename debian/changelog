@@ -1,4 +1,4 @@
-hdbc-postgresql (2.0.0.0) unstable; urgency=low
+hdbc-postgresql (2.0.0.0-1) unstable; urgency=low
 
   * New upstream release.
 
