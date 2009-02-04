@@ -5,7 +5,9 @@ import Database.HDBC.PostgreSQL.Parser(convertSQL)
 import Test.HUnit
 
 connectDB = 
-    handleSqlError (connectPostgreSQL "")
+    handleSqlError (do dbh <- connectPostgreSQL ""
+                       run dbh "SET client_min_messages=WARNING" []
+                       return dbh)
 
 dateTimeTypeOfSqlValue :: SqlValue -> String
 dateTimeTypeOfSqlValue (SqlLocalDate _) = "date"
@@ -19,3 +21,5 @@ dateTimeTypeOfSqlValue (SqlPOSIXTime _) = "integer"
 dateTimeTypeOfSqlValue (SqlEpochTime _) = "integer"
 dateTimeTypeOfSqlValue (SqlTimeDiff _) = "interval"
 dateTimeTypeOfSqlValue _ = "text"
+
+supportsFracTime = True
