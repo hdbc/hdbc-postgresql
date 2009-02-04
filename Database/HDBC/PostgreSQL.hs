@@ -48,7 +48,7 @@ types is:
 
 * SqlDiffTime: INTERVAL
 
-* SqlPOSIXTime: INTEGER
+* SqlPOSIXTime: NUMERIC
 
 * SqlEpochTime: INTEGER
 
