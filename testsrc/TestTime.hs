@@ -87,11 +87,13 @@ testIt baseZonedTime =
       basePOSIXTime :: POSIXTime
       basePOSIXTime = convert baseZonedTime
 
-      baseClockTime :: ST.ClockTime
-      baseClockTime = convert baseZonedTime
-
-      baseCalendarTime :: ST.CalendarTime
-      baseCalendarTime = convert baseZonedTime
-
       baseTimeDiff :: ST.TimeDiff
       baseTimeDiff = convert baseDiffTime
+
+      -- No fractional parts for these two
+
+      baseClockTime :: ST.ClockTime
+      baseClockTime = convert testZonedTime
+
+      baseCalendarTime :: ST.CalendarTime
+      baseCalendarTime = convert testZonedTime
