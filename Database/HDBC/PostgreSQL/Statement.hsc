@@ -324,11 +324,11 @@ makeSqlValue sqltypeid bstrval =
                    timestr = fixString strval
                in return $ SqlZonedLocalTimeOfDay a b)
 
-      SqlIntervalT _ -> return $ SqlDiffTime $ fromInteger $ 
+      SqlIntervalT _ -> return $ SqlDiffTime $ fromRational $ 
                          case split ':' strval of 
-                           [h, m, s] -> (read h) * 60 * 60 +
-                                        (read m) * 60 +
-                                        (read s)
+                           [h, m, s] -> toRational (((read h)::Integer) * 60 * 60 +
+                                                    ((read m)::Integer) * 60) +
+                                        toRational ((read s)::Double)
                            _ -> error $ "PostgreSQL Statement.hsc: Couldn't parse interval: " ++ strval
       
       -- TODO: For now we just map the binary types to SqlByteStrings. New SqlValue constructors are needed to handle these.
