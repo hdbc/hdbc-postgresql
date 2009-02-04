@@ -1,7 +1,7 @@
 Source: hdbc-postgresql
 Priority: optional
 Maintainer: John Goerzen <jgoerzen@complete.org>
-Build-Depends: debhelper (>= 4.0.0), ghc6 (>= 6.8.2dfsg1), haskell-devscripts (>= 0.6.15), cpphs, haddock, libghc6-hdbc-dev (>= 2.0.0), libpq-dev (>= 8.1.1), libghc6-mtl-dev, libghc6-parsec-dev
+Build-Depends: debhelper (>= 4.0.0), ghc6 (>= 6.8.2dfsg1), haskell-devscripts (>= 0.6.15), cpphs, haddock, libghc6-hdbc-dev (>= 2.1.0), libpq-dev (>= 8.1.1), libghc6-mtl-dev, libghc6-parsec-dev
 Build-Depends-Indep: haskell-hdbc-doc, ghc6-doc
 Standards-Version: 3.8.0
 Section: libs
@@ -12,7 +12,7 @@ Vcs-Git: git://git.complete.org/hdbc-postgresql
 Package: libghc6-hdbc-postgresql-dev
 Section: libdevel
 Architecture: any
-Depends: libghc6-hdbc-dev (>= 2.0.0), ${haskell:Depends}, ${shlibs:Depends}, ${misc:Depends}, libpq-dev (>= 8.1.1), libghc6-mtl-dev, libghc6-parsec-dev
+Depends: libghc6-hdbc-dev (>= 2.1.0), ${haskell:Depends}, ${shlibs:Depends}, ${misc:Depends}, libpq-dev (>= 8.1.1), libghc6-mtl-dev, libghc6-parsec-dev
 Description: PostgreSQL HDBC (Haskell Database Connectivity) Driver for GHC
  HDBC provides an abstraction layer between Haskell programs and SQL
  relational databases. This lets you write database code once, in
@@ -23,7 +23,7 @@ Description: PostgreSQL HDBC (Haskell Database Connectivity) Driver for GHC
 Package: haskell-hdbc-postgresql-doc
 Section: doc
 Architecture: all
-Depends: haskell-hdbc-doc (>= 2.0.0), ${haskell:Depends}, ${shlibs:Depends}, ${misc:Depends}
+Depends: haskell-hdbc-doc (>= 2.1.0), ${haskell:Depends}, ${shlibs:Depends}, ${misc:Depends}
 Description: PostgreSQL HDBC (Haskell Database Connectivity) documentation
  HDBC provides an abstraction layer between Haskell programs and SQL
  relational databases. This lets you write database code once, in
