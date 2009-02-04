@@ -1,3 +1,9 @@
+hdbc-postgresql (2.1.0.0-1) unstable; urgency=low
+
+  * New upstream release, supporting fractions of seconds.
+
+ -- John Goerzen <jgoerzen@complete.org>  Wed, 04 Feb 2009 14:06:48 -0600
+
 hdbc-postgresql (2.0.0.0-1) unstable; urgency=low
 
   * New upstream release.
