@@ -1,4 +1,4 @@
-hdbc-postgresql (2.1.0.0-2) unstable; urgency=low
+hdbc-postgresql (2.1.0.1-1) unstable; urgency=low
 
   * Update for GHC 6.10.
 
