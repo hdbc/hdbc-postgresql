@@ -1,3 +1,9 @@
+hdbc-postgresql (2.1.0.0-2) unstable; urgency=low
+
+  * Update for GHC 6.10.
+
+ -- John Goerzen <jgoerzen@complete.org>  Fri, 06 Mar 2009 08:08:35 -0600
+
 hdbc-postgresql (2.1.0.0-1) unstable; urgency=low
 
   * New upstream release, supporting fractions of seconds.
