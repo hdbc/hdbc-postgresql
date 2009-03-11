@@ -32,7 +32,7 @@ Library
     Database.HDBC.PostgreSQL.PTypeConv
   Extensions: ExistentialQuantification, ForeignFunctionInterface
   Build-Depends: base, mtl, HDBC>=2.1.0, parsec, utf8-string,
-                 bytestring, old-time, old-locale
+                 bytestring, old-time, old-locale, time
   if flag(splitBase)
     Build-Depends: base >= 3, old-time
   else
