@@ -142,12 +142,22 @@ fexecute sstate args = withConn (dbo sstate) $ \cconn ->
                  let statusmsg = BUTF8.toString statusmsgbs
                  let errormsg = BUTF8.toString errormsgbs
 
+                 state <- pqresultErrorField resptr #{const PG_DIAG_SQLSTATE} >>= peekCStringUTF8
+
                  pqclear_raw resptr
                  throwSqlError $ 
-                          SqlError {seState = "",
+                          SqlError {seState = state,
                                     seNativeError = fromIntegral status,
                                     seErrorMsg = "execute: " ++ statusmsg ++
                                                  ": " ++ errormsg}
+
+peekCStringUTF8 :: CString -> IO String
+-- Marshal a NUL terminated C string into a Haskell string, decoding it
+-- with UTF8.
+peekCStringUTF8 str = fmap BUTF8.toString (B.packCString str)
+
+
+
 {- General algorithm: find out how many columns we have, check the type
 of each to see if it's NULL.  If it's not, fetch it as text and return that.
 -}
@@ -243,6 +253,9 @@ foreign import ccall unsafe "libpq-fe.h PQresStatus"
 
 foreign import ccall unsafe "libpq-fe.h PQresultErrorMessage"
   pqresultErrorMessage :: (Ptr CStmt) -> IO CString
+
+foreign import ccall unsafe "libpq-fe.h PQresultErrorField"
+  pqresultErrorField :: (Ptr CStmt) -> CInt -> IO CString
 
 foreign import ccall unsafe "libpq-fe.h PQntuples"
   pqntuples :: Ptr CStmt -> IO CInt

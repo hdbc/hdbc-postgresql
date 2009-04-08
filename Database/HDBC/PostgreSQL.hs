@@ -58,6 +58,11 @@ Other combinations are possible, and may even be converted automatically.
 The above simply represents the types that seem the most logical correspondence,
 and thus are tested by the HDBC-PostgreSQL test suite.
 
+/NOTE ON ERROR HANDLING/
+
+When an @SqlError@ is thrown, the field @seState@ is set to one of the error codes
+described at
+<http://www.postgresql.org/docs/8.1/static/errcodes-appendix.html>.
 -}
 
 module Database.HDBC.PostgreSQL
