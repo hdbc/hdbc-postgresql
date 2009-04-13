@@ -29,7 +29,8 @@ Library
     Database.HDBC.PostgreSQL.Types,
     Database.HDBC.PostgreSQL.Utils,
     Database.HDBC.PostgreSQL.Parser,
-    Database.HDBC.PostgreSQL.PTypeConv
+    Database.HDBC.PostgreSQL.PTypeConv,
+    Database.HDBC.PostgreSQL.ErrorCodes
   Extensions: ExistentialQuantification, ForeignFunctionInterface
   Build-Depends: base, mtl, HDBC>=2.1.0, parsec, utf8-string,
                  bytestring, old-time, old-locale, time
@@ -59,6 +60,7 @@ Executable runtests
                   Database.HDBC.PostgreSQL.Utils,
                   Database.HDBC.PostgreSQL.Parser,
                   Database.HDBC.PostgreSQL.PTypeConv,
+                  Database.HDBC.PostgreSQL.ErrorCodes,
                   SpecificDB,
                   SpecificDBTests,
                   TestMisc,
