@@ -1,3 +1,9 @@
+hdbc-postgresql (2.1.0.2-1) unstable; urgency=low
+
+  * Small new features.
+
+ -- John Goerzen <jgoerzen@complete.org>  Thu, 02 Jul 2009 15:09:45 -0500
+
 hdbc-postgresql (2.1.0.1-1) unstable; urgency=low
 
   * Update for GHC 6.10.
