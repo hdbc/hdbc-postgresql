@@ -17,6 +17,13 @@ multiFinish = dbTestCase (\dbh ->
        finish sth
                           )
 
+runRawTest = dbTestCase (\dbh ->
+    do runRaw dbh "CREATE TABLE valid1 (a int); CREATE TABLE valid2 (a int)"
+       tables <- getTables dbh
+       assertBool "valid1 table not created!" ("valid1" `elem` tables)
+       assertBool "valid2 table not created!" ("valid2" `elem` tables)
+                        )
+
 basicQueries = dbTestCase (\dbh ->
     do sth <- prepare dbh "SELECT 1 + 1"
        sExecute sth []
@@ -138,6 +145,7 @@ tests = TestList
         [
          TestLabel "openClosedb" openClosedb,
          TestLabel "multiFinish" multiFinish,
+         TestLabel "runRawTest" runRawTest,
          TestLabel "basicQueries" basicQueries,
          TestLabel "createTable" createTable,
          TestLabel "runReplace" runReplace,
