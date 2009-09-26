@@ -1,5 +1,6 @@
 module TestSbasics(tests) where
 import Test.HUnit
+import Data.List
 import Database.HDBC
 import TestUtils
 import System.IO
@@ -23,6 +24,17 @@ runRawTest = dbTestCase (\dbh ->
        assertBool "valid1 table not created!" ("valid1" `elem` tables)
        assertBool "valid2 table not created!" ("valid2" `elem` tables)
                         )
+
+runRawErrorTest = dbTestCase (\dbh ->
+    let expected = "ERROR:  syntax error at or near \"INVALID\""
+    in do err <- (runRaw dbh "CREATE TABLE valid1 (a int); INVALID" >> return "No error") `catchSql`
+                 (return . seErrorMsg)
+          assertBool "Error message inappropriate" (expected `isInfixOf` err)
+          rollback dbh
+          tables <- getTables dbh
+          assertBool "valid1 table created!" (not $ "valid1" `elem` tables)
+                             )
+
 
 basicQueries = dbTestCase (\dbh ->
     do sth <- prepare dbh "SELECT 1 + 1"
@@ -146,6 +158,7 @@ tests = TestList
          TestLabel "openClosedb" openClosedb,
          TestLabel "multiFinish" multiFinish,
          TestLabel "runRawTest" runRawTest,
+         TestLabel "runRawErrorTest" runRawErrorTest,
          TestLabel "basicQueries" basicQueries,
          TestLabel "createTable" createTable,
          TestLabel "runReplace" runReplace,
