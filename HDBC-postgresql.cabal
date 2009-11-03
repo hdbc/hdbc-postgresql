@@ -1,5 +1,5 @@
 Name: HDBC-postgresql
-Version: 2.1.0.2
+Version: 2.2.0.0
 License: LGPL
 Maintainer: John Goerzen <jgoerzen@complete.org>
 Author: John Goerzen
@@ -32,12 +32,8 @@ Library
     Database.HDBC.PostgreSQL.PTypeConv,
     Database.HDBC.PostgreSQL.ErrorCodes
   Extensions: ExistentialQuantification, ForeignFunctionInterface
-  Build-Depends: base, mtl, HDBC>=2.1.0, parsec, utf8-string,
+  Build-Depends: base >= 3 && < 5, mtl, HDBC>=2.2.0, parsec, utf8-string,
                  bytestring, old-time, old-locale, time
-  if flag(splitBase)
-    Build-Depends: base >= 3, old-time
-  else
-    Build-Depends: base < 3
   if impl(ghc >= 6.9)
     Build-Depends: base >= 4
   Extra-Libraries: pq
