@@ -72,6 +72,7 @@ mkConn args conn = withConn conn $
                             Impl.disconnect = fdisconnect conn children,
                             Impl.commit = fcommit conn children,
                             Impl.rollback = frollback conn children,
+                            Impl.runRaw = frunRaw conn children,
                             Impl.run = frun conn children,
                             Impl.prepare = newSth conn children,
                             Impl.clone = connectPostgreSQL args,
@@ -92,6 +93,13 @@ mkConn args conn = withConn conn $
 
 begin_transaction :: Conn -> ChildList -> IO ()
 begin_transaction o children = frun o children "BEGIN" [] >> return ()
+
+frunRaw :: Conn -> ChildList -> String -> IO ()
+frunRaw o children query =
+    do sth <- newSth o children query
+       executeRaw sth
+       finish sth
+       return ()
 
 frun :: Conn -> ChildList -> String -> [SqlValue] -> IO Integer
 frun o children query args =

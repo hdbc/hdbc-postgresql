@@ -10,4 +10,5 @@ type Conn = ForeignPtr WrappedCConn
 data CStmt = CStmt
 type WrappedCStmt = Ptr CStmt
 type Stmt = ForeignPtr WrappedCStmt
+type ResultStatus = Word32
 

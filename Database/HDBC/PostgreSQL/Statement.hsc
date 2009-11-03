@@ -76,6 +76,7 @@ newSth indbo mchildren query =
        let retval = 
                 Statement {execute = fexecute sstate,
                            executeMany = fexecutemany sstate,
+                           executeRaw = fexecuteRaw sstate,
                            finish = public_ffinish sstate,
                            fetchRow = ffetchrow sstate,
                            originalQuery = query,
@@ -103,53 +104,66 @@ fexecute sstate args = withConn (dbo sstate) $ \cconn ->
        public_ffinish sstate    -- Sets nextrowmv to -1
        resptr <- pqexecParams cconn cquery
                  (genericLength args) nullPtr cargs nullPtr nullPtr 0
-       status <- pqresultStatus resptr
-       case status of
-         #{const PGRES_EMPTY_QUERY} ->
-             do l $ "PGRES_EMPTY_QUERY: " ++ squery sstate
-                pqclear_raw resptr
-                swapMVar (coldefmv sstate) []
-                return 0
-         #{const PGRES_COMMAND_OK} ->
-             do l $ "PGRES_COMMAND_OK: " ++ squery sstate
-                rowscs <- pqcmdTuples resptr
-                rows <- peekCString rowscs
-                pqclear_raw resptr
-                swapMVar (coldefmv sstate) []
-                return $ case rows of
-                                   "" -> 0
-                                   x -> read x
-         #{const PGRES_TUPLES_OK} -> 
-             do l $ "PGRES_TUPLES_OK: " ++ squery sstate
-                fgetcoldef resptr >>= swapMVar (coldefmv sstate) 
-                numrows <- pqntuples resptr
-                if numrows < 1
-                   then do pqclear_raw resptr
-                           return 0
-                   else do 
-                        wrappedptr <- withRawConn (dbo sstate) 
-                                      (\rawconn -> wrapstmt resptr rawconn)
-                        fresptr <- newForeignPtr pqclearptr wrappedptr
-                        swapMVar (nextrowmv sstate) 0
-                        swapMVar (stomv sstate) (Just fresptr)
-                        return 0
-         _ -> do l $ "PGRES ERROR: " ++ squery sstate
-                 csstatusmsg <- pqresStatus status
-                 cserrormsg <- pqresultErrorMessage resptr
-                 
-                 statusmsgbs <- B.packCString csstatusmsg
-                 errormsgbs <- B.packCString cserrormsg
-                 let statusmsg = BUTF8.toString statusmsgbs
-                 let errormsg = BUTF8.toString errormsgbs
+       handleResultStatus resptr sstate =<< pqresultStatus resptr
 
-                 state <- pqresultErrorField resptr #{const PG_DIAG_SQLSTATE} >>= peekCStringUTF8
+{- | Differs from fexecute in that it does not prepare its input
+   query, and the input query may contain multiple statements.  This
+   is useful for issuing DDL or DML commands. -}
+fexecuteRaw :: SState -> IO ()
+fexecuteRaw sstate =
+    withConn (dbo sstate) $ \cconn ->
+        B.useAsCString (BUTF8.fromString (squery sstate)) $ \cquery ->
+            do l "in fexecute"
+               public_ffinish sstate    -- Sets nextrowmv to -1
+               resptr <- pqexec cconn cquery
+               handleResultStatus resptr sstate =<< pqresultStatus resptr
+               return ()
 
-                 pqclear_raw resptr
-                 throwSqlError $ 
-                          SqlError {seState = state,
-                                    seNativeError = fromIntegral status,
-                                    seErrorMsg = "execute: " ++ statusmsg ++
-                                                 ": " ++ errormsg}
+handleResultStatus :: (Num a, Read a) => WrappedCStmt -> SState -> ResultStatus -> IO a
+handleResultStatus resptr sstate status =
+    case status of
+      #{const PGRES_EMPTY_QUERY} ->
+          do l $ "PGRES_EMPTY_QUERY: " ++ squery sstate
+             pqclear_raw resptr
+             swapMVar (coldefmv sstate) []
+             return 0
+      #{const PGRES_COMMAND_OK} ->
+          do l $ "PGRES_COMMAND_OK: " ++ squery sstate
+             rowscs <- pqcmdTuples resptr
+             rows <- peekCString rowscs
+             pqclear_raw resptr
+             swapMVar (coldefmv sstate) []
+             return $ case rows of
+                        "" -> 0
+                        x -> read x
+      #{const PGRES_TUPLES_OK} ->
+          do l $ "PGRES_TUPLES_OK: " ++ squery sstate
+             fgetcoldef resptr >>= swapMVar (coldefmv sstate)
+             numrows <- pqntuples resptr
+             if numrows < 1 then (pqclear_raw resptr >> return 0) else
+                 do
+                   wrappedptr <- withRawConn (dbo sstate)
+                                 (\rawconn -> wrapstmt resptr rawconn)
+                   fresptr <- newForeignPtr pqclearptr wrappedptr
+                   swapMVar (nextrowmv sstate) 0
+                   swapMVar (stomv sstate) (Just fresptr)
+                   return 0
+      _ -> do l $ "PGRES ERROR: " ++ squery sstate
+              csstatusmsg <- pqresStatus status
+              cserrormsg <- pqresultErrorMessage resptr
+
+              statusmsgbs <- B.packCString csstatusmsg
+              errormsgbs <- B.packCString cserrormsg
+              let statusmsg = BUTF8.toString statusmsgbs
+              let errormsg = BUTF8.toString errormsgbs
+
+              state <- pqresultErrorField resptr #{const PG_DIAG_SQLSTATE} >>= peekCStringUTF8
+
+              pqclear_raw resptr
+              throwSqlError $ SqlError { seState = state
+                                       , seNativeError = fromIntegral status
+                                       , seErrorMsg = "execute: " ++ statusmsg ++
+                                                      ": " ++ errormsg}
 
 peekCStringUTF8 :: CString -> IO String
 -- Marshal a NUL terminated C string into a Haskell string, decoding it
@@ -233,6 +247,9 @@ foreign import ccall unsafe "libpq-fe.h PQexecParams"
                   (Ptr CInt) ->
                   CInt ->
                   IO (Ptr CStmt)
+
+foreign import ccall unsafe "libpq-fe.h PQexec"
+  pqexec :: (Ptr CConn) -> CString -> IO (Ptr CStmt)
 
 foreign import ccall unsafe "hdbc-postgresql-helper.h PQclear_app"
   pqclear :: Ptr WrappedCStmt -> IO ()

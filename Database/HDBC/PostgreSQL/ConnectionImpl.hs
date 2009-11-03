@@ -26,6 +26,7 @@ data Connection =
                 disconnect :: IO (),
                 commit :: IO (),
                 rollback :: IO (),
+                runRaw :: String -> IO (),
                 run :: String -> [Types.SqlValue] -> IO Integer,
                 prepare :: String -> IO Types.Statement,
                 clone :: IO Connection,
@@ -43,6 +44,7 @@ instance Types.IConnection Connection where
   disconnect = disconnect
   commit = commit
   rollback = rollback
+  runRaw = runRaw
   run = run
   prepare = prepare
   clone = clone
