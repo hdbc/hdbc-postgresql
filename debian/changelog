@@ -1,3 +1,10 @@
+hdbc-postgresql (2.2.0.0-1) unstable; urgency=low
+
+  * New upstream release.
+  * Switching to Haskell team maintenance.
+
+ -- John Goerzen <jgoerzen@complete.org>  Tue, 03 Nov 2009 08:55:44 -0600
+
 hdbc-postgresql (2.1.0.2-1) unstable; urgency=low
 
   * Small new features.

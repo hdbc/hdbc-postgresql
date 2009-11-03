@@ -1,13 +1,14 @@
 Source: hdbc-postgresql
 Priority: optional
-Maintainer: John Goerzen <jgoerzen@complete.org>
+Uploaders: John Goerzen <jgoerzen@complete.org>
+Maintainer: Debian Haskell Group <pkg-haskell-maintainers@lists.alioth.debian.org>
 Build-Depends: debhelper (>= 4.0.0), ghc6 (>= 6.10), haskell-devscripts (>= 0.6.15), cpphs, haddock, libghc6-hdbc-dev (>= 2.1.0), libpq-dev (>= 8.1.1), libghc6-mtl-dev, libghc6-parsec-dev
 Build-Depends-Indep: haskell-hdbc-doc, ghc6-doc
 Standards-Version: 3.8.0
 Section: libs
 Homepage: http://software.complete.org/hdbc-postgresql
-Vcs-Browser: http://git.complete.org/hdbc-postgresql
-Vcs-Git: git://git.complete.org/hdbc-postgresql
+Vcs-Git: git://git.debian.org/git/pkg-haskell/hdbc-postgresql.git
+Vcs-Browser: http://git.debian.org/?p=pkg-haskell/hdbc-postgresql.git;a=summary
 
 Package: libghc6-hdbc-postgresql-dev
 Section: libdevel
