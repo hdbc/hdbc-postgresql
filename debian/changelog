@@ -1,3 +1,9 @@
+hdbc-postgresql (2.2.0.0-2) unstable; urgency=low
+
+  * Switch to hlibrary.mk (Closes: 559654) 
+
+ -- Joachim Breitner <nomeata@debian.org>  Sun, 06 Dec 2009 21:20:20 +0100
+
 hdbc-postgresql (2.2.0.0-1) unstable; urgency=low
 
   * New upstream release.
