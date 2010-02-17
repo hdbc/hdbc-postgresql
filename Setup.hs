@@ -36,7 +36,7 @@ pgconfigProgram = (simpleProgram "pgconfig") {
 psqlBuildInfo :: LocalBuildInfo -> IO BuildInfo
 psqlBuildInfo lbi = do
   (pgconfigProg, _) <- requireProgram verbosity
-                         pgconfigProgram AnyVersion (withPrograms lbi)
+                         pgconfigProgram (withPrograms lbi)
   let pgconfig = rawSystemProgramStdout verbosity pgconfigProg
 
   incDir <- pgconfig ["--includedir"]
