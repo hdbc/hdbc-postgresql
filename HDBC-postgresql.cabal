@@ -1,9 +1,9 @@
 Name: HDBC-postgresql
-Version: 2.2.0.0
+Version: 2.2.3.0
 License: LGPL
 Maintainer: John Goerzen <jgoerzen@complete.org>
 Author: John Goerzen
-Copyright: Copyright (c) 2005-2009 John Goerzen
+Copyright: Copyright (c) 2005-2010 John Goerzen
 license-file: COPYRIGHT
 extra-source-files: COPYING, hdbc-postgresql-helper.h, pgtypes.h,
                     Makefile,
