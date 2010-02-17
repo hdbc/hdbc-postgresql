@@ -5,7 +5,13 @@ Maintainer: John Goerzen <jgoerzen@complete.org>
 Author: John Goerzen
 Copyright: Copyright (c) 2005-2009 John Goerzen
 license-file: COPYRIGHT
-extra-source-files: COPYING, hdbc-postgresql-helper.h, pgtypes.h
+extra-source-files: COPYING, hdbc-postgresql-helper.h, pgtypes.h,
+                    Makefile,
+                    README.txt,
+                    TODO,
+                    testsrc/COPYING,
+                    testsrc/COPYRIGHT,
+                    testsrc/TestTime.hs
 homepage: http://software.complete.org/hdbc-postgresql
 Category: Database
 synopsis: PostgreSQL driver for HDBC
