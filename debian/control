@@ -5,8 +5,8 @@ Uploaders: John Goerzen <jgoerzen@complete.org>
 Maintainer: Debian Haskell Group <pkg-haskell-maintainers@lists.alioth.debian.org>
 Build-Depends:
  debhelper (>= 7),
- ghc6 (>= 6.10),
- haskell-devscripts (>= 0.6.18),
+ ghc6 (>= 6.12),
+ haskell-devscripts (>= 0.7.3),
  cdbs,
  cpphs,
  haddock,
