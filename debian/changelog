@@ -1,3 +1,10 @@
+hdbc-postgresql (2.2.3.0-1) unstable; urgency=low
+
+  * New upstream version.
+  * Rebuild with GHC 6.12.
+
+ -- John Goerzen <jgoerzen@complete.org>  Wed, 17 Feb 2010 15:02:32 -0600
+
 hdbc-postgresql (2.2.0.0-2) unstable; urgency=low
 
   * Switch to hlibrary.mk (Closes: 559654) 
