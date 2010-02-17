@@ -1,0 +1,5 @@
+optimize multiple executions and executeMany
+
+cursors
+
+shouldn't use Double when converting from intervals
