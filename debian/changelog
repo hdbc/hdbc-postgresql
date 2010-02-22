@@ -1,6 +1,6 @@
 hdbc-postgresql (2.2.3.0-1) unstable; urgency=low
 
-  * New upstream version.
+  * New upstream version.  Closes: #570880.
   * Rebuild with GHC 6.12.
 
  -- John Goerzen <jgoerzen@complete.org>  Wed, 17 Feb 2010 15:02:32 -0600
