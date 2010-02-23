@@ -1,4 +1,4 @@
-hdbc-postgresql (2.2.3.0-1) unstable; urgency=low
+hdbc-postgresql (2.2.3.1-1) unstable; urgency=low
 
   * New upstream version.  Closes: #570880.
   * Rebuild with GHC 6.12.
