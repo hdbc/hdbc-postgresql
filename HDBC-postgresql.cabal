@@ -1,5 +1,5 @@
 Name: HDBC-postgresql
-Version: 2.2.3.0
+Version: 2.2.3.1
 License: LGPL
 Maintainer: John Goerzen <jgoerzen@complete.org>
 Author: John Goerzen
@@ -19,7 +19,7 @@ Description: This package provides a PostgreSQL driver for HDBC
 Stability: Stable
 
 Build-Type: Custom
-Cabal-Version: >=1.2.3
+Cabal-Version: >=1.8
 
 Flag splitBase
   description: Choose the new smaller, split-up package.
