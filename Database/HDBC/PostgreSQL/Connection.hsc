@@ -120,7 +120,7 @@ fgetTables conn children =
     do sth <- newSth conn children 
               "select table_name from information_schema.tables where \
                \table_schema != 'pg_catalog' AND table_schema != \
-               \'information_schema' AND table_schema != 'system_schema'"
+               \'information_schema'"
        execute sth []
        res1 <- fetchAllRows' sth
        let res = map fromSql $ concat res1

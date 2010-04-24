@@ -9,7 +9,8 @@ import Data.Time.Clock.POSIX
 import Data.Maybe
 import Data.Convertible
 import SpecificDB
-import System.Locale
+import System.Locale(defaultTimeLocale)
+import Database.HDBC.Locale (iso8601DateFormat)
 import qualified System.Time as ST
 
 instance Eq ZonedTime where
