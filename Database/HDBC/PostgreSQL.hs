@@ -69,9 +69,24 @@ module Database.HDBC.PostgreSQL
      -- |When an @SqlError@ is thrown, the field @seState@ is set to one of the following
      -- error codes.
      module Database.HDBC.PostgreSQL.ErrorCodes,
+
+     -- * Threading
+     -- $threading
     )
 
 where
 
 import Database.HDBC.PostgreSQL.Connection(connectPostgreSQL, Connection())
 import Database.HDBC.PostgreSQL.ErrorCodes
+
+{- $threading
+   
+   Provided the local libpq library is thread-safe, multiple 'Connection's may be used
+   to have concurrent database queries.  Concurrent queries issued on a single 
+   'Connection' will be performed serially.
+
+   When the local libpq library is not thread-safe (ie. it has not been compiled with 
+   --enable-thread-safety), only a single database function will be performed at a time.
+  
+-}
+
