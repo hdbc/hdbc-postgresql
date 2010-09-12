@@ -37,12 +37,21 @@ import Foreign.ForeignPtr
 import Foreign.Ptr
 import Data.Word
 import Data.Maybe
-import Control.Concurrent.MVar
 import qualified Data.ByteString as B
 import qualified Data.ByteString.UTF8 as BUTF8
+import Control.Concurrent.MVar
+import System.IO (stderr, hPutStrLn)
+import System.IO.Unsafe (unsafePerformIO)
+
 
 #include <libpq-fe.h>
 #include <pg_config.h>
+
+
+-- | A global lock only used when libpq is /not/ thread-safe.  In that situation
+-- this mvar is used to serialize access to the FFI calls marked as /safe/.
+{-# NOINLINE globalConnLock #-}
+globalConnLock = unsafePerformIO $ newMVar ()
 
 {- | Connect to a PostgreSQL server.
 
@@ -51,11 +60,19 @@ of the connection string. -}
 connectPostgreSQL :: String -> IO Impl.Connection
 connectPostgreSQL args = B.useAsCString (BUTF8.fromString args) $
   \cs -> do ptr <- pqconnectdb cs
+            threadSafe <- pqisThreadSafe ptr
+            connLock <- if threadSafe==0 -- Also check GHC.Conc.numCapabilities here?
+                          then do hPutStrLn stderr "WARNING: libpq is not threadsafe, \
+                                          \serializing all libpq FFI calls.  \
+                                          \(Consider recompiling libpq with \
+                                          \--enable-thread-safety.\n"
+                                  return globalConnLock
+                          else newMVar ()
             status <- pqstatus ptr
             wrappedptr <- wrapconn ptr nullPtr
             fptr <- newForeignPtr pqfinishptr wrappedptr
             case status of
-                     #{const CONNECTION_OK} -> mkConn args fptr
+                     #{const CONNECTION_OK} -> mkConn args (connLock,fptr)
                      _ -> raiseError "connectPostgreSQL" status ptr
 
 -- FIXME: environment vars may have changed, should use pgsql enquiries
@@ -154,7 +171,7 @@ fdisconnect conn mchildren =
     do closeAllChildren mchildren
        withRawConn conn $ pqfinish
 
-foreign import ccall unsafe "libpq-fe.h PQconnectdb"
+foreign import ccall safe "libpq-fe.h PQconnectdb"
   pqconnectdb :: CString -> IO (Ptr CConn)
 
 foreign import ccall unsafe "hdbc-postgresql-helper.h wrapobjpg"
@@ -174,3 +191,6 @@ foreign import ccall unsafe "libpq-fe.h PQprotocolVersion"
 
 foreign import ccall unsafe "libpq-fe.h PQserverVersion"
   pqserverVersion :: Ptr CConn -> IO CInt
+
+foreign import ccall unsafe "libpq.fe.h PQisthreadsafe"
+  pqisThreadSafe :: Ptr CConn -> IO Int

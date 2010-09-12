@@ -97,7 +97,7 @@ fdescribeResult sstate =
 {- For now, we try to just  handle things as simply as possible.
 FIXME lots of room for improvement here (types, etc). -}
 fexecute :: (Num a, Read a) => SState -> [SqlValue] -> IO a
-fexecute sstate args = withConn (dbo sstate) $ \cconn ->
+fexecute sstate args = withConnLocked (dbo sstate) $ \cconn ->
                        B.useAsCString (BUTF8.fromString (squery sstate)) $ \cquery ->
                        withCStringArr0 args $ \cargs -> -- wichSTringArr0 uses UTF-8
     do l "in fexecute"
@@ -111,7 +111,7 @@ fexecute sstate args = withConn (dbo sstate) $ \cconn ->
    is useful for issuing DDL or DML commands. -}
 fexecuteRaw :: SState -> IO ()
 fexecuteRaw sstate =
-    withConn (dbo sstate) $ \cconn ->
+    withConnLocked (dbo sstate) $ \cconn ->
         B.useAsCString (BUTF8.fromString (squery sstate)) $ \cquery ->
             do l "in fexecute"
                public_ffinish sstate    -- Sets nextrowmv to -1
@@ -239,7 +239,7 @@ ffinish p = withRawStmt p $ pqclear
 foreign import ccall unsafe "libpq-fe.h PQresultStatus"
   pqresultStatus :: (Ptr CStmt) -> IO #{type ExecStatusType}
 
-foreign import ccall unsafe "libpq-fe.h PQexecParams"
+foreign import ccall safe "libpq-fe.h PQexecParams"
   pqexecParams :: (Ptr CConn) -> CString -> CInt ->
                   (Ptr #{type Oid}) ->
                   (Ptr CString) ->
@@ -248,7 +248,7 @@ foreign import ccall unsafe "libpq-fe.h PQexecParams"
                   CInt ->
                   IO (Ptr CStmt)
 
-foreign import ccall unsafe "libpq-fe.h PQexec"
+foreign import ccall safe "libpq-fe.h PQexec"
   pqexec :: (Ptr CConn) -> CString -> IO (Ptr CStmt)
 
 foreign import ccall unsafe "hdbc-postgresql-helper.h PQclear_app"

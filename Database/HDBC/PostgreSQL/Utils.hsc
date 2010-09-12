@@ -23,6 +23,7 @@ import Foreign.Ptr
 import Database.HDBC(throwSqlError)
 import Database.HDBC.Types
 import Database.HDBC.PostgreSQL.Types
+import Control.Concurrent.MVar
 import Foreign.C.Types
 import Control.Exception
 import Foreign.Storable
@@ -60,10 +61,17 @@ done by withRawConn.
 Ditto for statements. -}
 
 withConn :: Conn -> (Ptr CConn -> IO b) -> IO b
-withConn = genericUnwrap
+withConn (_lock,conn) = genericUnwrap conn
+
+-- Perform the associated action with the connection lock held.
+-- Care must be taken with the use of this as it is *not* re-entrant.  Calling it
+-- a second time in the same thread will cause dead-lock. 
+-- (A better approach would be to use RLock from concurrent-extra)
+withConnLocked :: Conn -> (Ptr CConn -> IO b) -> IO b
+withConnLocked c@(lock,_) a = withConn c (\cconn -> withMVar lock (\_ -> a cconn))
 
 withRawConn :: Conn -> (Ptr WrappedCConn -> IO b) -> IO b
-withRawConn = withForeignPtr
+withRawConn (_lock,conn) = withForeignPtr conn
 
 withStmt :: Stmt -> (Ptr CStmt -> IO b) -> IO b
 withStmt = genericUnwrap
