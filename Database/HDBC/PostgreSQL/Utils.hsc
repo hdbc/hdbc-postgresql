@@ -33,6 +33,7 @@ import Foreign.Marshal.Utils
 import Data.Word
 import qualified Data.ByteString.UTF8 as BUTF8
 import qualified Data.ByteString as B
+import qualified Data.ByteString.Char8 as BCHAR8
 #ifndef __HUGS__
 -- Hugs includes this in Data.ByteString
 import qualified Data.ByteString.Unsafe as B
@@ -89,11 +90,18 @@ withCStringArr0 inp action = withAnyArr0 convfunc freefunc inp action
 -}
           convfunc y@(SqlUTCTime _) = convfunc (SqlZonedTime (fromSql y))
           convfunc y@(SqlEpochTime _) = convfunc (SqlZonedTime (fromSql y))
+          convfunc (SqlByteString x) = cstrUtf8BString (cleanUpBSNulls x)
           convfunc x = cstrUtf8BString (fromSql x)
           freefunc x =
               if x == nullPtr
                  then return ()
                  else free x
+
+cleanUpBSNulls :: B.ByteString -> B.ByteString
+cleanUpBSNulls = B.concatMap convfunc
+  where convfunc 0 = bsForNull
+        convfunc x = B.singleton x
+        bsForNull = BCHAR8.pack "\\000"
 
 withAnyArr0 :: (a -> IO (Ptr b)) -- ^ Function that transforms input data into pointer
             -> (Ptr b -> IO ())  -- ^ Function that frees generated data
