@@ -168,7 +168,9 @@ handleResultStatus resptr sstate status =
 peekCStringUTF8 :: CString -> IO String
 -- Marshal a NUL terminated C string into a Haskell string, decoding it
 -- with UTF8.
-peekCStringUTF8 str = fmap BUTF8.toString (B.packCString str)
+peekCStringUTF8 str 
+   | str == nullPtr  = return ""
+   | otherwise       = fmap BUTF8.toString (B.packCString str)
 
 
 
