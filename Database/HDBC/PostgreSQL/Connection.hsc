@@ -20,7 +20,7 @@ Copyright (C) 2005-2006 John Goerzen <jgoerzen@complete.org>
 -}
 
 module Database.HDBC.PostgreSQL.Connection
-	(connectPostgreSQL, Impl.Connection())
+	(connectPostgreSQL, withPostgreSQL, Impl.Connection())
  where
 
 import Database.HDBC
@@ -42,7 +42,7 @@ import qualified Data.ByteString.UTF8 as BUTF8
 import Control.Concurrent.MVar
 import System.IO (stderr, hPutStrLn)
 import System.IO.Unsafe (unsafePerformIO)
-
+import Control.Exception(bracket) 
 
 #include <libpq-fe.h>
 #include <pg_config.h>
@@ -50,6 +50,7 @@ import System.IO.Unsafe (unsafePerformIO)
 
 -- | A global lock only used when libpq is /not/ thread-safe.  In that situation
 -- this mvar is used to serialize access to the FFI calls marked as /safe/.
+globalConnLock :: MVar ()
 {-# NOINLINE globalConnLock #-}
 globalConnLock = unsafePerformIO $ newMVar ()
 
@@ -101,8 +102,13 @@ mkConn args conn = withConn conn $
                             Impl.dbTransactionSupport = True,
                             Impl.getTables = fgetTables conn children,
                             Impl.describeTable = fdescribeTable conn children}
-       quickQuery rconn "SET client_encoding TO utf8;" []
+       _ <- quickQuery rconn "SET client_encoding TO utf8;" []
        return rconn
+
+-- | Connect to a PostgreSQL server,  and automatically disconnect
+-- if the handler exits normally or throws an exception.
+withPostgreSQL :: String -> (Impl.Connection -> IO a) -> IO a
+withPostgreSQL connstr = bracket (connectPostgreSQL connstr) (disconnect)
 
 --------------------------------------------------
 -- Guts here
@@ -126,11 +132,11 @@ frun o children query args =
        return res
 
 fcommit :: Conn -> ChildList -> IO ()
-fcommit o cl = do frun o cl "COMMIT" []
+fcommit o cl = do _ <- frun o cl "COMMIT" []
                   begin_transaction o cl
 
 frollback :: Conn -> ChildList -> IO ()
-frollback o cl =  do frun o cl "ROLLBACK" []
+frollback o cl =  do _ <- frun o cl "ROLLBACK" []
                      begin_transaction o cl
 
 fgetTables conn children =
@@ -138,7 +144,7 @@ fgetTables conn children =
               "select table_name from information_schema.tables where \
                \table_schema != 'pg_catalog' AND table_schema != \
                \'information_schema'"
-       execute sth []
+       _ <- execute sth []
        res1 <- fetchAllRows' sth
        let res = map fromSql $ concat res1
        return $ seq (length res) res
@@ -155,7 +161,7 @@ fdescribeSchemaTable o cl maybeSchema table =
                (if isJust maybeSchema then "and ns.nspname = ? " else "") ++
                "and attrelid = pg_class.oid and relnamespace = ns.oid order by attnum")
        let params = toSql table : (if isJust maybeSchema then [toSql $ fromJust maybeSchema] else [])
-       execute sth params
+       _ <- execute sth params
        res <- fetchAllRows' sth
        return $ map desccol res
     where
