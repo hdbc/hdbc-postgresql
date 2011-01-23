@@ -219,8 +219,7 @@ fgetcoldef cstmt =
     do ncols <- pqnfields cstmt
        mapM desccol [0..(ncols - 1)]
     where desccol i =
-              do colname <- (pqfname cstmt i >>= B.packCString >>=
-                             return . BUTF8.toString)
+              do colname <- peekCStringUTF8 =<< pqfname cstmt i 
                  coltype <- pqftype cstmt i
                  --coloctets <- pqfsize
                  let coldef = oidToColDef coltype
