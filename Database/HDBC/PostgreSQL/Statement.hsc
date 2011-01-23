@@ -48,7 +48,7 @@ l _ = return ()
 
 #include <libpq-fe.h>
 
-data SState = 
+data SState =
     SState { stomv :: MVar (Maybe Stmt),
              nextrowmv :: MVar (CInt), -- -1 for no next row (empty); otherwise, next row to read.
              dbo :: Conn,
@@ -57,8 +57,8 @@ data SState =
 
 -- FIXME: we currently do no prepare optimization whatsoever.
 
-newSth :: Conn -> ChildList -> String -> IO Statement               
-newSth indbo mchildren query = 
+newSth :: Conn -> ChildList -> String -> IO Statement
+newSth indbo mchildren query =
     do l "in newSth"
        newstomv <- newMVar Nothing
        newnextrowmv <- newMVar (-1)
@@ -67,13 +67,13 @@ newSth indbo mchildren query =
                       Left errstr -> throwSqlError $ SqlError
                                       {seState = "",
                                        seNativeError = (-1),
-                                       seErrorMsg = "hdbc prepare: " ++ 
+                                       seErrorMsg = "hdbc prepare: " ++
                                                     show errstr}
                       Right converted -> return converted
        let sstate = SState {stomv = newstomv, nextrowmv = newnextrowmv,
                             dbo = indbo, squery = usequery,
                             coldefmv = newcoldefmv}
-       let retval = 
+       let retval =
                 Statement {execute = fexecute sstate,
                            executeMany = fexecutemany sstate,
                            executeRaw = fexecuteRaw sstate,
@@ -86,12 +86,12 @@ newSth indbo mchildren query =
        return retval
 
 fgetColumnNames :: SState -> IO [(String)]
-fgetColumnNames sstate = 
+fgetColumnNames sstate =
     do c <- readMVar (coldefmv sstate)
        return (map fst c)
 
 fdescribeResult :: SState -> IO [(String, SqlColDesc)]
-fdescribeResult sstate = 
+fdescribeResult sstate =
     readMVar (coldefmv sstate)
 
 {- For now, we try to just  handle things as simply as possible.
@@ -104,7 +104,7 @@ fexecute sstate args = withConnLocked (dbo sstate) $ \cconn ->
        public_ffinish sstate    -- Sets nextrowmv to -1
        resptr <- pqexecParams cconn cquery
                  (genericLength args) nullPtr cargs nullPtr nullPtr 0
-       handleResultStatus resptr sstate =<< pqresultStatus resptr
+       handleResultStatus cconn resptr sstate =<< pqresultStatus resptr
 
 {- | Differs from fexecute in that it does not prepare its input
    query, and the input query may contain multiple statements.  This
@@ -116,11 +116,11 @@ fexecuteRaw sstate =
             do l "in fexecute"
                public_ffinish sstate    -- Sets nextrowmv to -1
                resptr <- pqexec cconn cquery
-               handleResultStatus resptr sstate =<< pqresultStatus resptr
+               handleResultStatus cconn resptr sstate =<< pqresultStatus resptr
                return ()
 
-handleResultStatus :: (Num a, Read a) => WrappedCStmt -> SState -> ResultStatus -> IO a
-handleResultStatus resptr sstate status =
+handleResultStatus :: (Num a, Read a) => Ptr CConn -> WrappedCStmt -> SState -> ResultStatus -> IO a
+handleResultStatus cconn resptr sstate status =
     case status of
       #{const PGRES_EMPTY_QUERY} ->
           do l $ "PGRES_EMPTY_QUERY: " ++ squery sstate
@@ -148,16 +148,21 @@ handleResultStatus resptr sstate status =
                    swapMVar (nextrowmv sstate) 0
                    swapMVar (stomv sstate) (Just fresptr)
                    return 0
+      _ | resptr == nullPtr -> do
+              l $ "PGRES ERROR: " ++ squery sstate
+              errormsg  <- peekCStringUTF8 =<< pqerrorMessage cconn
+              statusmsg <- peekCStringUTF8 =<< pqresStatus status
+
+              throwSqlError $ SqlError { seState = "E"
+                                       , seNativeError = fromIntegral status
+                                       , seErrorMsg = "execute: " ++ statusmsg ++
+                                                      ": " ++ errormsg}
+
       _ -> do l $ "PGRES ERROR: " ++ squery sstate
-              csstatusmsg <- pqresStatus status
-              cserrormsg <- pqresultErrorMessage resptr
-
-              statusmsgbs <- B.packCString csstatusmsg
-              errormsgbs <- B.packCString cserrormsg
-              let statusmsg = BUTF8.toString statusmsgbs
-              let errormsg = BUTF8.toString errormsgbs
-
-              state <- pqresultErrorField resptr #{const PG_DIAG_SQLSTATE} >>= peekCStringUTF8
+              errormsg  <- peekCStringUTF8 =<< pqresultErrorMessage resptr
+              statusmsg <- peekCStringUTF8 =<< pqresStatus status
+              state     <- peekCStringUTF8 =<<
+                            pqresultErrorField resptr #{const PG_DIAG_SQLSTATE}
 
               pqclear_raw resptr
               throwSqlError $ SqlError { seState = state
@@ -168,7 +173,7 @@ handleResultStatus resptr sstate status =
 peekCStringUTF8 :: CString -> IO String
 -- Marshal a NUL terminated C string into a Haskell string, decoding it
 -- with UTF8.
-peekCStringUTF8 str 
+peekCStringUTF8 str
    | str == nullPtr  = return ""
    | otherwise       = fmap BUTF8.toString (B.packCString str)
 
@@ -181,7 +186,7 @@ of each to see if it's NULL.  If it's not, fetch it as text and return that.
 ffetchrow :: SState -> IO (Maybe [SqlValue])
 ffetchrow sstate = modifyMVar (nextrowmv sstate) dofetchrow
     where dofetchrow (-1) = l "ffr -1" >> return ((-1), Nothing)
-          dofetchrow nextrow = modifyMVar (stomv sstate) $ \stmt -> 
+          dofetchrow nextrow = modifyMVar (stomv sstate) $ \stmt ->
              case stmt of
                Nothing -> l "ffr nos" >> return (stmt, ((-1), Nothing))
                Just cmstmt -> withStmt cmstmt $ \cstmt ->
@@ -195,10 +200,10 @@ ffetchrow sstate = modifyMVar (nextrowmv sstate) dofetchrow
                                return (Nothing, ((-1), Nothing))
                        else do l "getting stuff"
                                ncols <- pqnfields cstmt
-                               res <- mapM (getCol cstmt nextrow) 
+                               res <- mapM (getCol cstmt nextrow)
                                       [0..(ncols - 1)]
                                return (stmt, (nextrow + 1, Just res))
-          getCol p row icol = 
+          getCol p row icol =
              do isnull <- pqgetisnull p row icol
                 if isnull /= 0
                    then return SqlNull
@@ -214,7 +219,7 @@ fgetcoldef cstmt =
     do ncols <- pqnfields cstmt
        mapM desccol [0..(ncols - 1)]
     where desccol i =
-              do colname <- (pqfname cstmt i >>= B.packCString >>= 
+              do colname <- (pqfname cstmt i >>= B.packCString >>=
                              return . BUTF8.toString)
                  coltype <- pqftype cstmt i
                  --coloctets <- pqfsize
@@ -228,7 +233,7 @@ fexecutemany sstate arglist =
 
 -- Finish and change state
 public_ffinish :: SState -> IO ()
-public_ffinish sstate = 
+public_ffinish sstate =
     do l "public_ffinish"
        swapMVar (nextrowmv sstate) (-1)
        modifyMVar_ (stomv sstate) worker
@@ -294,17 +299,15 @@ foreign import ccall unsafe "libpq-fe.h PQfname"
 foreign import ccall unsafe "libpq-fe.h PQftype"
   pqftype :: Ptr CStmt -> CInt -> IO #{type Oid}
 
-
-
 -- SqlValue construction function and helpers
 
 -- Make a SqlValue for the passed column type and string value, where it is assumed that the value represented is not the Sql null value.
 -- The IO Monad is required only to obtain the local timezone for interpreting date/time values without an explicit timezone.
 makeSqlValue :: SqlTypeId -> B.ByteString -> IO SqlValue
 makeSqlValue sqltypeid bstrval =
-    let strval = BUTF8.toString bstrval 
+    let strval = BUTF8.toString bstrval
     in
-    case sqltypeid of 
+    case sqltypeid of
 
       tid | tid == SqlCharT        ||
             tid == SqlVarCharT     ||
@@ -325,8 +328,8 @@ makeSqlValue sqltypeid bstrval =
       tid | tid == SqlRealT   ||
             tid == SqlFloatT  ||
             tid == SqlDoubleT   -> return $ SqlDouble (read strval)
-      
-      SqlBitT -> return $ case strval of 
+
+      SqlBitT -> return $ case strval of
                    't':_ -> SqlBool True
                    'f':_ -> SqlBool False
                    'T':_ -> SqlBool True -- the rest of these are here "just in case", since they are legal as input
@@ -334,21 +337,21 @@ makeSqlValue sqltypeid bstrval =
                    'Y':_ -> SqlBool True
                    "1"   -> SqlBool True
                    _     -> SqlBool False
-      
+
       -- Dates and Date/Times
       tid | tid == SqlDateT -> return $ SqlLocalDate (fromSql (toSql strval))
       tid | tid == SqlTimestampWithZoneT -> return $ SqlZonedTime (fromSql (toSql (fixString strval)))
 
           -- SqlUTCDateTimeT not actually generated by PostgreSQL
-                                            
+
       tid | tid == SqlTimestampT   ||
             tid == SqlUTCDateTimeT   -> return $ SqlLocalTime (fromSql (toSql strval))
 
       -- Times without dates
-      tid | tid == SqlTimeT    || 
+      tid | tid == SqlTimeT    ||
             tid == SqlUTCTimeT   -> return $ SqlLocalTimeOfDay (fromSql (toSql strval))
 
-      tid | tid == SqlTimeWithZoneT -> 
+      tid | tid == SqlTimeWithZoneT ->
               (let (a, b) = case (parseTime defaultTimeLocale "%T%Q %z" timestr,
                                   parseTime defaultTimeLocale "%T%Q %z" timestr) of
                                 (Just x, Just y) -> (x, y)
@@ -356,16 +359,16 @@ makeSqlValue sqltypeid bstrval =
                    timestr = fixString strval
                in return $ SqlZonedLocalTimeOfDay a b)
 
-      SqlIntervalT _ -> return $ SqlDiffTime $ fromRational $ 
-                         case split ':' strval of 
+      SqlIntervalT _ -> return $ SqlDiffTime $ fromRational $
+                         case split ':' strval of
                            [h, m, s] -> toRational (((read h)::Integer) * 60 * 60 +
                                                     ((read m)::Integer) * 60) +
                                         toRational ((read s)::Double)
                            _ -> error $ "PostgreSQL Statement.hsc: Couldn't parse interval: " ++ strval
-      
+
       -- TODO: For now we just map the binary types to SqlByteStrings. New SqlValue constructors are needed to handle these.
       tid | tid == SqlBinaryT        ||
-            tid == SqlVarBinaryT     || 
+            tid == SqlVarBinaryT     ||
             tid == SqlLongVarBinaryT    -> return $ SqlByteString bstrval
 
       SqlGUIDT -> return $ SqlByteString bstrval
@@ -381,14 +384,14 @@ fixString s =
          then strbase ++ " " ++ zone ++ "00"
          else -- It wasn't in the expected format; don't touch.
               s
-  
+
 
 -- Make a rational number from a decimal string representation of the number.
 makeRationalFromDecimal :: String -> Rational
-makeRationalFromDecimal s = 
+makeRationalFromDecimal s =
     case elemIndex '.' s of
       Nothing -> toRational ((read s)::Integer)
-      Just dotix -> 
+      Just dotix ->
         let (nstr,'.':dstr) = splitAt dotix s
             num = (read $ nstr ++ dstr)::Integer
             den = 10^((genericLength dstr) :: Integer)
