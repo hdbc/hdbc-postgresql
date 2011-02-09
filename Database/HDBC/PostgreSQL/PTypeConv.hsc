@@ -88,7 +88,7 @@ oidToColType oid =
       #{const PG_TYPE_FLOAT4} -> SqlRealT
       #{const PG_TYPE_FLOAT8} -> SqlFloatT
       #{const PG_TYPE_DATE} -> SqlDateT
-      #{const PG_TYPE_ABSTIME} -> SqlTimestampT
+      #{const PG_TYPE_ABSTIME} -> SqlTimestampWithZoneT
 
       #{const PG_TYPE_DATETIME} -> SqlTimestampWithZoneT
       #{const PG_TYPE_TIMESTAMP_NO_TMZONE} -> SqlTimestampT
