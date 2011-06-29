@@ -63,7 +63,13 @@ and thus are tested by the HDBC-PostgreSQL test suite.
 module Database.HDBC.PostgreSQL
     (
      -- * Connecting to Databases
-     connectPostgreSQL, withPostgreSQL, Connection,
+     connectPostgreSQL, withPostgreSQL,
+     connectPostgreSQL', withPostgreSQL',
+     Connection,
+
+     -- * Transactions
+     begin,
+
      -- * PostgreSQL Error Codes
      --
      -- |When an @SqlError@ is thrown, the field @seState@ is set to one of the following
@@ -76,7 +82,9 @@ module Database.HDBC.PostgreSQL
 
 where
 
-import Database.HDBC.PostgreSQL.Connection(connectPostgreSQL, withPostgreSQL, Connection())
+import Database.HDBC.PostgreSQL.Connection(connectPostgreSQL, withPostgreSQL,
+                                           connectPostgreSQL', withPostgreSQL',
+                                           begin, Connection())
 import Database.HDBC.PostgreSQL.ErrorCodes
 
 {- $threading

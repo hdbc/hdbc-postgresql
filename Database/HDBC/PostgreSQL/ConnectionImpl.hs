@@ -24,6 +24,7 @@ import Database.HDBC.ColTypes as ColTypes
 data Connection = 
     Connection {
                 disconnect :: IO (),
+                begin :: IO (),
                 commit :: IO (),
                 rollback :: IO (),
                 runRaw :: String -> IO (),

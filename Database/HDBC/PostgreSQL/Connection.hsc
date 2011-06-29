@@ -20,7 +20,9 @@ Copyright (C) 2005-2006 John Goerzen <jgoerzen@complete.org>
 -}
 
 module Database.HDBC.PostgreSQL.Connection
-	(connectPostgreSQL, withPostgreSQL, Impl.Connection())
+	(connectPostgreSQL, withPostgreSQL,
+         connectPostgreSQL', withPostgreSQL',
+         Impl.begin, Impl.Connection())
  where
 
 import Database.HDBC
@@ -39,6 +41,7 @@ import Data.Word
 import Data.Maybe
 import qualified Data.ByteString as B
 import qualified Data.ByteString.UTF8 as BUTF8
+import Control.Monad (when)
 import Control.Concurrent.MVar
 import System.IO (stderr, hPutStrLn)
 import System.IO.Unsafe (unsafePerformIO)
@@ -59,7 +62,14 @@ globalConnLock = unsafePerformIO $ newMVar ()
 See <http://www.postgresql.org/docs/8.1/static/libpq.html#LIBPQ-CONNECT> for the meaning
 of the connection string. -}
 connectPostgreSQL :: String -> IO Impl.Connection
-connectPostgreSQL args = B.useAsCString (BUTF8.fromString args) $
+connectPostgreSQL = connectPostgreSQL_helper True
+
+connectPostgreSQL' :: String -> IO Impl.Connection
+connectPostgreSQL' = connectPostgreSQL_helper False
+
+connectPostgreSQL_helper :: Bool -> String -> IO Impl.Connection
+connectPostgreSQL_helper auto_transaction args =
+  B.useAsCString (BUTF8.fromString args) $
   \cs -> do ptr <- pqconnectdb cs
             threadSafe <- pqisThreadSafe ptr
             connLock <- if threadSafe==0 -- Also check GHC.Conc.numCapabilities here?
@@ -73,23 +83,26 @@ connectPostgreSQL args = B.useAsCString (BUTF8.fromString args) $
             wrappedptr <- wrapconn ptr nullPtr
             fptr <- newForeignPtr pqfinishptr wrappedptr
             case status of
-                     #{const CONNECTION_OK} -> mkConn args (connLock,fptr)
+                     #{const CONNECTION_OK} -> mkConn auto_transaction args (connLock,fptr)
                      _ -> raiseError "connectPostgreSQL" status ptr
 
 -- FIXME: environment vars may have changed, should use pgsql enquiries
 -- for clone.
-mkConn :: String -> Conn -> IO Impl.Connection
-mkConn args conn = withConn conn $
+mkConn :: Bool -> String -> Conn -> IO Impl.Connection
+mkConn auto_transaction args conn = withConn conn $
   \cconn -> 
     do children <- newMVar []
-       begin_transaction conn children
+       when auto_transaction $ begin_transaction conn children
        protover <- pqprotocolVersion cconn
        serverver <- pqserverVersion cconn
        let clientver = #{const_str PG_VERSION}
        let rconn = Impl.Connection {
                             Impl.disconnect = fdisconnect conn children,
-                            Impl.commit = fcommit conn children,
-                            Impl.rollback = frollback conn children,
+                            Impl.begin = if auto_transaction
+                                         then return ()
+                                         else begin_transaction conn children,
+                            Impl.commit = fcommit auto_transaction conn children,
+                            Impl.rollback = frollback auto_transaction conn children,
                             Impl.runRaw = frunRaw conn children,
                             Impl.run = frun conn children,
                             Impl.prepare = newSth conn children,
@@ -109,6 +122,9 @@ mkConn args conn = withConn conn $
 -- if the handler exits normally or throws an exception.
 withPostgreSQL :: String -> (Impl.Connection -> IO a) -> IO a
 withPostgreSQL connstr = bracket (connectPostgreSQL connstr) (disconnect)
+
+withPostgreSQL' :: String -> (Impl.Connection -> IO a) -> IO a
+withPostgreSQL' connstr = bracket (connectPostgreSQL' connstr) (disconnect)
 
 --------------------------------------------------
 -- Guts here
@@ -131,13 +147,13 @@ frun o children query args =
        finish sth
        return res
 
-fcommit :: Conn -> ChildList -> IO ()
-fcommit o cl = do _ <- frun o cl "COMMIT" []
-                  begin_transaction o cl
+fcommit :: Bool -> Conn -> ChildList -> IO ()
+fcommit begin o cl = do _ <- frun o cl "COMMIT" []
+                        when begin $ begin_transaction o cl
 
-frollback :: Conn -> ChildList -> IO ()
-frollback o cl =  do _ <- frun o cl "ROLLBACK" []
-                     begin_transaction o cl
+frollback :: Bool -> Conn -> ChildList -> IO ()
+frollback begin o cl =  do _ <- frun o cl "ROLLBACK" []
+                           when begin $ begin_transaction o cl
 
 fgetTables conn children =
     do sth <- newSth conn children 
