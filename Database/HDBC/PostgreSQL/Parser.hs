@@ -1,6 +1,8 @@
 {- -*- mode: haskell; -*- 
+-}
 {- PostgreSQL uses $1, $2, etc. instead of ? in query strings.  So we have to
 do some basic parsing on these things to fix 'em up. -}
+
 
 module Database.HDBC.PostgreSQL.Parser where
 
