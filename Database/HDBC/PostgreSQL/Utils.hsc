@@ -1,4 +1,5 @@
 {- -*- mode: haskell; -*- 
+-}
 
 module Database.HDBC.PostgreSQL.Utils where
 import Foreign.C.String
