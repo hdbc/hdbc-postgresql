@@ -31,6 +31,7 @@ void PQfinish_app(finalizeonce *conn) {
   if (conn->isfinalized)
     return;
   PQfinish((PGconn *) (conn->encapobj));
+  conn->encapobj = NULL;
   conn->isfinalized = 1;
 }
 
