@@ -42,13 +42,13 @@ linecomment = do string "--"
 
 -- FIXME: handle pgsql dollar-quoted constants
 
-qmark :: Num st => GenParser Char st [Char]
+qmark :: (Num st, Show st) => GenParser Char st [Char]
 qmark = do char '?'
            n <- getState
            updateState (+1)
            return $ "$" ++ show n
 
-statement :: Num st => GenParser Char st [Char]
+statement :: (Num st, Show st) => GenParser Char st [Char]
 statement = 
     do s <- many ((try qmark) <|>
                   (try comment) <|>
