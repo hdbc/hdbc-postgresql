@@ -10,7 +10,7 @@ extra-source-files: LICENSE, hdbc-postgresql-helper.h, pgtypes.h,
                     README.txt,
                     TODO,
                     testsrc/TestTime.hs
-homepage: http://software.complete.org/hdbc-postgresql
+homepage: http://github.com/hdbc/hdbc-postgresql
 Category: Database
 synopsis: PostgreSQL driver for HDBC
 Description: This package provides a PostgreSQL driver for HDBC
