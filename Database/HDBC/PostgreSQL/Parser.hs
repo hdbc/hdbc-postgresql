@@ -48,9 +48,14 @@ qmark = do char '?'
            updateState (+1)
            return $ "$" ++ show n
 
+escapedQmark :: GenParser Char st [Char]
+escapedQmark = do try (char '\\' >> char '?')
+                  return "?"
+
 statement :: (Num st, Show st) => GenParser Char st [Char]
 statement = 
-    do s <- many ((try qmark) <|>
+    do s <- many ((try escapedQmark) <|>
+                  (try qmark) <|>
                   (try comment) <|>
                   (try literal) <|>
                   (try qidentifier) <|>
