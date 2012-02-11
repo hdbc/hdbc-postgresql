@@ -26,7 +26,7 @@ main = defaultMainWithHooks simpleUserHooks {
     } 
 }
 
-pgconfigProgram = (simpleProgram "pgconfig") {
+pgconfigProgram = (simpleProgram "pgconfig or pg_config") {
     programFindLocation = \verbosity -> do
       pgconfig  <- findProgramOnPath "pgconfig"  verbosity 
       pg_config <- findProgramOnPath "pg_config" verbosity
