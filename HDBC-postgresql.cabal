@@ -77,3 +77,6 @@ Executable runtests
    Extensions: ExistentialQuantification,
                ForeignFunctionInterface
 
+source-repository head
+  type:     git
+  location: https://github.com/hdbc/hdbc-postgresql.git
