@@ -17,7 +17,7 @@ main = defaultMainWithHooks simpleUserHooks {
   hookedPrograms = [pgconfigProgram],
 
   confHook = \pkg flags -> do
-    lbi <- confHook defaultUserHooks pkg flags
+    lbi <- confHook simpleUserHooks pkg flags
     bi <- psqlBuildInfo lbi
     
     return lbi {
@@ -28,8 +28,8 @@ main = defaultMainWithHooks simpleUserHooks {
 
 pgconfigProgram = (simpleProgram "pgconfig or pg_config") {
     programFindLocation = \verbosity -> do
-      pgconfig  <- findProgramOnPath "pgconfig"  verbosity 
-      pg_config <- findProgramOnPath "pg_config" verbosity
+      pgconfig  <- findProgramLocation verbosity "pgconfig"
+      pg_config <- findProgramLocation verbosity "pg_config"
       return (pgconfig `mplus` pg_config)
   }
 
