@@ -100,7 +100,7 @@ fexecuteRaw sstate =
             do l "in fexecute"
                public_ffinish sstate    -- Sets nextrowmv to -1
                resptr <- pqexec cconn cquery
-               handleResultStatus cconn resptr sstate =<< pqresultStatus resptr
+               _ <- handleResultStatus cconn resptr sstate =<< pqresultStatus resptr
                return ()
 
 handleResultStatus :: (Num a, Read a) => Ptr CConn -> WrappedCStmt -> SState -> ResultStatus -> IO a
@@ -109,28 +109,28 @@ handleResultStatus cconn resptr sstate status =
       #{const PGRES_EMPTY_QUERY} ->
           do l $ "PGRES_EMPTY_QUERY: " ++ squery sstate
              pqclear_raw resptr
-             swapMVar (coldefmv sstate) []
+             _ <- swapMVar (coldefmv sstate) []
              return 0
       #{const PGRES_COMMAND_OK} ->
           do l $ "PGRES_COMMAND_OK: " ++ squery sstate
              rowscs <- pqcmdTuples resptr
              rows <- peekCString rowscs
              pqclear_raw resptr
-             swapMVar (coldefmv sstate) []
+             _ <- swapMVar (coldefmv sstate) []
              return $ case rows of
                         "" -> 0
                         x -> read x
       #{const PGRES_TUPLES_OK} ->
           do l $ "PGRES_TUPLES_OK: " ++ squery sstate
-             fgetcoldef resptr >>= swapMVar (coldefmv sstate)
+             _ <- fgetcoldef resptr >>= swapMVar (coldefmv sstate)
              numrows <- pqntuples resptr
              if numrows < 1 then (pqclear_raw resptr >> return 0) else
                  do
                    wrappedptr <- withRawConn (dbo sstate)
                                  (\rawconn -> wrapstmt resptr rawconn)
                    fresptr <- newForeignPtr pqclearptr wrappedptr
-                   swapMVar (nextrowmv sstate) 0
-                   swapMVar (stomv sstate) (Just fresptr)
+                   _ <- swapMVar (nextrowmv sstate) 0
+                   _ <- swapMVar (stomv sstate) (Just fresptr)
                    return 0
       _ | resptr == nullPtr -> do
               l $ "PGRES ERROR: " ++ squery sstate
@@ -218,7 +218,7 @@ fexecutemany sstate arglist =
 public_ffinish :: SState -> IO ()
 public_ffinish sstate =
     do l "public_ffinish"
-       swapMVar (nextrowmv sstate) (-1)
+       _ <- swapMVar (nextrowmv sstate) (-1)
        modifyMVar_ (stomv sstate) worker
     where worker Nothing = return Nothing
           worker (Just sth) = ffinish sth >> return Nothing

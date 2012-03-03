@@ -13,43 +13,43 @@ escapeseq = (try $ string "''") <|>
             (try $ string "\\'")
 
 literal :: GenParser Char st [Char]
-literal = do char '\''
+literal = do _ <- char '\''
              s <- many (escapeseq <|> (noneOf "'" >>= (\x -> return [x])))
-             char '\''
+             _ <- char '\''
              return $ "'" ++ (concat s) ++ "'"
 
 qidentifier :: GenParser Char st [Char]
-qidentifier = do char '"'
+qidentifier = do _ <- char '"'
                  s <- many (noneOf "\"")
-                 char '"'
+                 _ <- char '"'
                  return $ "\"" ++ s ++ "\""
 
 comment :: GenParser Char st [Char]
 comment = ccomment <|> linecomment
 
 ccomment :: GenParser Char st [Char]
-ccomment = do string "/*"
+ccomment = do _ <- string "/*"
               c <- manyTill ((try ccomment) <|> 
                              (anyChar >>= (\x -> return [x])))
                    (try (string "*/"))
               return $ "/*" ++ concat c ++ "*/"
 
 linecomment :: GenParser Char st [Char]
-linecomment = do string "--"
+linecomment = do _ <- string "--"
                  c <- many (noneOf "\n")
-                 char '\n'
+                 _ <- char '\n'
                  return $ "--" ++ c ++ "\n"
 
 -- FIXME: handle pgsql dollar-quoted constants
 
 qmark :: (Num st, Show st) => GenParser Char st [Char]
-qmark = do char '?'
+qmark = do _ <- char '?'
            n <- getState
            updateState (+1)
            return $ "$" ++ show n
 
 escapedQmark :: GenParser Char st [Char]
-escapedQmark = do try (char '\\' >> char '?')
+escapedQmark = do _ <- try (char '\\' >> char '?')
                   return "?"
 
 statement :: (Num st, Show st) => GenParser Char st [Char]
