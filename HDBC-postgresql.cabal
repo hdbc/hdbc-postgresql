@@ -37,7 +37,7 @@ Library
     Database.HDBC.PostgreSQL.ErrorCodes
   Extensions: ExistentialQuantification, ForeignFunctionInterface
   Build-Depends: base >= 3 && < 5, mtl, HDBC>=2.2.0, parsec, utf8-string,
-                 bytestring, old-time, old-locale, time
+                 bytestring, old-time, old-locale, time, convertible
   if impl(ghc >= 6.9)
     Build-Depends: base >= 4
   Extra-Libraries: pq

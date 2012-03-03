@@ -1,6 +1,7 @@
 -- -*- mode: haskell; -*-
 {-# CFILES hdbc-postgresql-helper.c #-}
 -- Above line for hugs
+{-# LANGUAGE FlexibleContexts #-}
 
 module Database.HDBC.PostgreSQL.Connection
 	(connectPostgreSQL, withPostgreSQL,
@@ -28,6 +29,7 @@ import Control.Concurrent.MVar
 import System.IO (stderr, hPutStrLn)
 import System.IO.Unsafe (unsafePerformIO)
 import Control.Exception(bracket) 
+import Data.Convertible (Convertible)
 
 #include <libpq-fe.h>
 #include <pg_config.h>
@@ -137,6 +139,7 @@ frollback :: Bool -> Conn -> ChildList -> IO ()
 frollback begin o cl =  do _ <- frun o cl "ROLLBACK" []
                            when begin $ begin_transaction o cl
 
+fgetTables :: (Convertible SqlValue a) => Conn -> ChildList -> IO [a]
 fgetTables conn children =
     do sth <- newSth conn children 
               "select table_name from information_schema.tables where \
