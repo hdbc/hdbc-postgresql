@@ -24,6 +24,7 @@ import Database.HDBC.PostgreSQL.PTypeConv
 import Data.Time.Format
 import System.Locale
 
+l :: Monad m => t -> m ()
 l _ = return ()
 --l m = hPutStrLn stderr ("\n" ++ m)
 
@@ -97,7 +98,7 @@ fexecuteRaw sstate =
             do l "in fexecute"
                public_ffinish sstate    -- Sets nextrowmv to -1
                resptr <- pqexec cconn cquery
-               _ <- handleResultStatus cconn resptr sstate =<< pqresultStatus resptr
+               _ <- handleResultStatus cconn resptr sstate =<< pqresultStatus resptr :: IO Int
                return ()
 
 handleResultStatus :: (Num a, Read a) => Ptr CConn -> WrappedCStmt -> SState -> ResultStatus -> IO a
@@ -209,7 +210,7 @@ fgetcoldef cstmt =
 -- FIXME: needs a faster algorithm.
 fexecutemany :: SState -> [[SqlValue]] -> IO ()
 fexecutemany sstate arglist =
-    mapM_ (fexecute sstate) arglist >> return ()
+    mapM_ (fexecute sstate :: [SqlValue] -> IO Int) arglist >> return ()
 
 -- Finish and change state
 public_ffinish :: SState -> IO ()
@@ -354,6 +355,7 @@ makeSqlValue sqltypeid bstrval =
       SqlGUIDT -> return $ SqlByteString bstrval
 
       SqlUnknownT _ -> return $ SqlByteString bstrval
+      _ -> error $ "PostgreSQL Statement.hsc: unknown typeid: " ++ show sqltypeid
 
 -- Convert "15:33:01.536+00" to "15:33:01.536 +0000"
 fixString :: String -> String
