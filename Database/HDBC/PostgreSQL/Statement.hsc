@@ -15,15 +15,12 @@ import Foreign.C.String
 import Control.Monad
 import Data.List
 import Data.Word
-import Data.Maybe
 import Data.Ratio
-import System.IO
 import qualified Data.ByteString as B
 import qualified Data.ByteString.UTF8 as BUTF8
 import Database.HDBC.PostgreSQL.Parser(convertSQL)
 import Database.HDBC.DriverUtils
 import Database.HDBC.PostgreSQL.PTypeConv
-import Database.HDBC.PostgreSQL.Utils
 import Data.Time.Format
 import System.Locale
 

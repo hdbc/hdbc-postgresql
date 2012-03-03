@@ -10,7 +10,6 @@ module Database.HDBC.PostgreSQL.Connection
 
 import Database.HDBC
 import Database.HDBC.DriverUtils
-import Database.HDBC.ColTypes
 import qualified Database.HDBC.PostgreSQL.ConnectionImpl as Impl
 import Database.HDBC.PostgreSQL.Types
 import Database.HDBC.PostgreSQL.Statement
