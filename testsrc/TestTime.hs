@@ -1,3 +1,5 @@
+{-# LANGUAGE FlexibleContexts #-}
+
 module TestTime(tests) where
 import Test.HUnit
 import Database.HDBC
@@ -14,8 +16,7 @@ import Database.HDBC.Locale (iso8601DateFormat)
 import qualified System.Time as ST
 
 instance Eq ZonedTime where
-    a == b = zonedTimeToUTC a == zonedTimeToUTC b &&
-             zonedTimeZone a == zonedTimeZone b
+    a == b = zonedTimeToUTC a == zonedTimeToUTC b
 
 testZonedTime :: ZonedTime
 testZonedTime = fromJust $ parseTime defaultTimeLocale (iso8601DateFormat (Just "%T %z"))
@@ -28,7 +29,12 @@ testZonedTimeFrac = fromJust $ parseTime defaultTimeLocale (iso8601DateFormat (J
 
 rowdata t = [[SqlInt32 100, toSql t, SqlNull]]
 
-testDTType inputdata convToSqlValue = dbTestCase $ \dbh ->
+testDTType :: (Convertible SqlValue a, Show b, Eq b) =>
+    a
+    -> (a -> SqlValue)
+    -> (a -> b)
+    -> Test
+testDTType inputdata convToSqlValue toComparable = dbTestCase $ \dbh ->
     do run dbh ("CREATE TABLE hdbctesttime (testid INTEGER PRIMARY KEY NOT NULL, \
                 \testvalue " ++ dateTimeTypeOfSqlValue value ++ ")") []
        finally (testIt dbh) (do commit dbh
@@ -43,28 +49,30 @@ testDTType inputdata convToSqlValue = dbTestCase $ \dbh ->
                  case r of
                    [[testidsv, testvaluesv]] -> 
                        do assertEqual "testid" (5::Int) (fromSql testidsv)
-                          assertEqual "testvalue" inputdata (fromSql testvaluesv)
+                          assertEqual "testvalue"
+                                (toComparable inputdata)
+                                (toComparable$ fromSql testvaluesv)
           value = convToSqlValue inputdata
 
-mkTest label inputdata convfunc =
-    TestLabel label (testDTType inputdata convfunc)
+mkTest label inputdata convfunc toComparable =
+    TestLabel label (testDTType inputdata convfunc toComparable)
 
 tests = TestList $
     ((TestLabel "Non-frac" $ testIt testZonedTime) :
      if supportsFracTime then [TestLabel "Frac" $ testIt testZonedTimeFrac] else [])
 
 testIt baseZonedTime = 
-    TestList [mkTest "Day" baseDay toSql,
-              mkTest "TimeOfDay" baseTimeOfDay toSql,
-              mkTest "ZonedTimeOfDay" baseZonedTimeOfDay toSql,
-              mkTest "LocalTime" baseLocalTime toSql,
-              mkTest "ZonedTime" baseZonedTime toSql,
-              mkTest "UTCTime" baseUTCTime toSql,
-              mkTest "DiffTime" baseDiffTime toSql,
-              mkTest "POSIXTime" basePOSIXTime posixToSql,
-              mkTest "ClockTime" baseClockTime toSql,
-              mkTest "CalendarTime" baseCalendarTime toSql,
-              mkTest "TimeDiff" baseTimeDiff toSql
+    TestList [mkTest "Day" baseDay toSql id,
+              mkTest "TimeOfDay" baseTimeOfDay toSql id,
+              mkTest "ZonedTimeOfDay" baseZonedTimeOfDay toSql id,
+              mkTest "LocalTime" baseLocalTime toSql id,
+              mkTest "ZonedTime" baseZonedTime toSql id,
+              mkTest "UTCTime" baseUTCTime toSql id,
+              mkTest "DiffTime" baseDiffTime toSql id,
+              mkTest "POSIXTime" basePOSIXTime posixToSql id,
+              mkTest "ClockTime" baseClockTime toSql id,
+              mkTest "CalendarTime" baseCalendarTime toSql ST.toClockTime,
+              mkTest "TimeDiff" baseTimeDiff toSql id
              ]
     where 
       baseDay :: Day
