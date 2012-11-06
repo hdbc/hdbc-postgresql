@@ -61,20 +61,20 @@ tests = TestList $
     ((TestLabel "Non-frac" $ testIt testZonedTime) :
      if supportsFracTime then [TestLabel "Frac" $ testIt testZonedTimeFrac] else [])
 
-testIt baseZonedTime = 
-    TestList [mkTest "Day" baseDay toSql id,
-              mkTest "TimeOfDay" baseTimeOfDay toSql id,
-              mkTest "ZonedTimeOfDay" baseZonedTimeOfDay toSql id,
-              mkTest "LocalTime" baseLocalTime toSql id,
-              mkTest "ZonedTime" baseZonedTime toSql id,
-              mkTest "UTCTime" baseUTCTime toSql id,
-              mkTest "DiffTime" baseDiffTime toSql id,
-              mkTest "POSIXTime" basePOSIXTime posixToSql id,
-              mkTest "ClockTime" baseClockTime toSql id,
-              mkTest "CalendarTime" baseCalendarTime toSql ST.toClockTime,
-              mkTest "TimeDiff" baseTimeDiff toSql id
-             ]
-    where 
+testIt baseZonedTime =
+  TestList [ mkTest "Day"            baseDay            toSql      id
+           , mkTest "TimeOfDay"      baseTimeOfDay      toSql      id
+           , mkTest "ZonedTimeOfDay" baseZonedTimeOfDay toSql      id
+           , mkTest "LocalTime"      baseLocalTime      toSql      id
+           , mkTest "ZonedTime"      baseZonedTime      toSql      id
+           , mkTest "UTCTime"        baseUTCTime        toSql      id
+           , mkTest "DiffTime"       baseDiffTime       toSql      id
+           , mkTest "POSIXTime"      basePOSIXTime      posixToSql id
+           , mkTest "ClockTime"      baseClockTime      toSql      id
+           , mkTest "CalendarTime"   baseCalendarTime   toSql      ST.toClockTime
+           , mkTest "TimeDiff"       baseTimeDiff       toSql      id
+           ]
+ where
       baseDay :: Day
       baseDay = localDay baseLocalTime
 
