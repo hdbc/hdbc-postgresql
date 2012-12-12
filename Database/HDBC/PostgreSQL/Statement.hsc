@@ -45,15 +45,8 @@ newSth indbo mchildren query =
        newstomv <- newMVar Nothing
        newnextrowmv <- newMVar (-1)
        newcoldefmv <- newMVar []
-       usequery <- case convertSQL query of
-                      Left errstr -> throwSqlError $ SqlError
-                                      {seState = "",
-                                       seNativeError = (-1),
-                                       seErrorMsg = "hdbc prepare: " ++
-                                                    show errstr}
-                      Right converted -> return converted
        let sstate = SState {stomv = newstomv, nextrowmv = newnextrowmv,
-                            dbo = indbo, squery = usequery,
+                            dbo = indbo, squery = convertSQL query,
                             coldefmv = newcoldefmv}
        let retval =
                 Statement {execute = fexecute sstate,
