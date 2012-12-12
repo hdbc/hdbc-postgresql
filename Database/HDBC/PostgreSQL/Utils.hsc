@@ -3,7 +3,8 @@
 
 module Database.HDBC.PostgreSQL.Utils where
 import Foreign.C.String
-import Foreign.ForeignPtr
+import Foreign.ForeignPtr hiding (unsafeForeignPtrToPtr)
+import Foreign.ForeignPtr.Unsafe (unsafeForeignPtrToPtr)
 import Foreign.Ptr
 import Database.HDBC(throwSqlError)
 import Database.HDBC.Types
@@ -18,6 +19,7 @@ import Foreign.Marshal.Utils
 import Data.Word
 import qualified Data.ByteString.UTF8 as BUTF8
 import qualified Data.ByteString as B
+import qualified Data.ByteString.Internal as BI
 import qualified Data.ByteString.Char8 as BCHAR8
 #ifndef __HUGS__
 -- Hugs includes this in Data.ByteString
@@ -75,18 +77,40 @@ withCStringArr0 inp action = withAnyArr0 convfunc freefunc inp action
 -}
           convfunc y@(SqlUTCTime _) = convfunc (SqlZonedTime (fromSql y))
           convfunc y@(SqlEpochTime _) = convfunc (SqlZonedTime (fromSql y))
-          convfunc (SqlByteString x) = cstrUtf8BString (cleanUpBSNulls x)
+          convfunc (SqlByteString x) = cleanUpBSNulls x >>= cstrUtf8BString
           convfunc x = cstrUtf8BString (fromSql x)
           freefunc x =
               if x == nullPtr
                  then return ()
                  else free x
 
-cleanUpBSNulls :: B.ByteString -> B.ByteString
-cleanUpBSNulls = B.concatMap convfunc
-  where convfunc 0 = bsForNull
-        convfunc x = B.singleton x
-        bsForNull = BCHAR8.pack "\\000"
+cleanUpBSNulls :: B.ByteString -> IO B.ByteString
+cleanUpBSNulls input = BI.create newLength filler
+    where bsForNull = BCHAR8.pack "\\000"
+          nullsCount = length nullPositions
+          inputLength = B.length input
+          newLength = inputLength + 3 * nullsCount
+          nullPositions = B.elemIndices 0 input
+          bsToPtr = (\(x, _, _) -> unsafeForeignPtrToPtr x) . BI.toForeignPtr
+          inputPtr = bsToPtr input
+          transNullPtr = bsToPtr bsForNull
+          filler ptr =
+              let go n k [] = do
+                    let size = inputLength - n
+                        dst = plusPtr ptr k
+                        src = plusPtr inputPtr n
+                    copyBytes dst src size
+                  go n k (null':nulls) = do
+                    let size = null' - n
+                        dst = plusPtr ptr k
+                        src = plusPtr inputPtr n
+                    copyBytes dst src size
+                    let dst' = plusPtr dst size
+                        src' = transNullPtr
+                    copyBytes dst' src' 4
+                    go (null' + 1) (k + size + 4) nulls
+              in go 0 0 nullPositions
+
 
 withAnyArr0 :: (a -> IO (Ptr b)) -- ^ Function that transforms input data into pointer
             -> (Ptr b -> IO ())  -- ^ Function that frees generated data
