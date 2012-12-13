@@ -83,7 +83,8 @@ withCStringArr0 inp action = withAnyArr0 convfunc freefunc inp action
                  else free x
 
 cleanUpBSNulls :: B.ByteString -> B.ByteString
-cleanUpBSNulls = B.concatMap convfunc
+cleanUpBSNulls bs | 0 `B.notElem` bs = bs
+                  | otherwise = B.concatMap convfunc bs
   where convfunc 0 = bsForNull
         convfunc x = B.singleton x
         bsForNull = BCHAR8.pack "\\000"
