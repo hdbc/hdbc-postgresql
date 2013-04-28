@@ -1,14 +1,10 @@
 Name: HDBC-postgresql
-Version: 2.3.2.1
+Version: 3.0.0
 License: BSD3
 Maintainer: Nicolas Wu <nicolas.wu@gmail.com>
 Author: John Goerzen
 Copyright: Copyright (c) 2005-2011 John Goerzen
 license-file: LICENSE
-extra-source-files: LICENSE, hdbc-postgresql-helper.h, pgtypes.h,
-                    Makefile,
-                    README.txt,
-                    testsrc/TestTime.hs
 homepage: http://github.com/hdbc/hdbc-postgresql
 Category: Database
 synopsis: PostgreSQL driver for HDBC
@@ -18,63 +14,57 @@ Stability: Stable
 Build-Type: Custom
 Cabal-Version: >=1.8
 
-Flag splitBase
-  description: Choose the new smaller, split-up package.
-Flag buildtests
-  description: Build the executable to run unit tests
-  default: False
 
 Library
   Exposed-Modules: Database.HDBC.PostgreSQL
-  Other-Modules: Database.HDBC.PostgreSQL.Connection,
-    Database.HDBC.PostgreSQL.ConnectionImpl,
-    Database.HDBC.PostgreSQL.Statement,
-    Database.HDBC.PostgreSQL.Types,
-    Database.HDBC.PostgreSQL.Utils,
-    Database.HDBC.PostgreSQL.Parser,
-    Database.HDBC.PostgreSQL.PTypeConv,
-    Database.HDBC.PostgreSQL.ErrorCodes
-  Extensions: ExistentialQuantification, ForeignFunctionInterface
-  Build-Depends: base >= 3 && < 5, mtl, HDBC>=2.2.0, parsec, utf8-string,
-                 bytestring, old-time, old-locale, time, convertible
+  Build-Depends: base >= 3 && < 5
+               , mtl
+               , HDBC >= 3.0.0
+               , postgresql-libpq
+               , postgresql-simple
+               , blaze-builder
+               , bytestring
+               , text
+               , safe
+               , time
+               , old-locale
+               , uuid
+
   if impl(ghc >= 6.9)
     Build-Depends: base >= 4
-  Extra-Libraries: pq
-  C-Sources: hdbc-postgresql-helper.c
-  Include-Dirs: .
-  GHC-Options: -O2 -Wall
+  Ghc-Options: -Wall
 
-Executable runtests
-   if flag(buildtests)
-      Buildable: True
-      Build-Depends: HUnit, QuickCheck, testpack, containers,
-                     convertible, time, old-locale, parsec, utf8-string,
-                     bytestring, old-time, base, HDBC>=2.2.6
-   else
-      Buildable: False
-   Main-Is: runtests.hs
-   Other-Modules: Database.HDBC.PostgreSQL.Connection,
-                  Database.HDBC.PostgreSQL.ConnectionImpl,
-                  Database.HDBC.PostgreSQL.Statement,
-                  Database.HDBC.PostgreSQL.Types,
-                  Database.HDBC.PostgreSQL.Utils,
-                  Database.HDBC.PostgreSQL.Parser,
-                  Database.HDBC.PostgreSQL.PTypeConv,
-                  Database.HDBC.PostgreSQL.ErrorCodes,
-                  SpecificDB,
-                  SpecificDBTests,
-                  TestMisc,
-                  TestSbasics,
-                  TestUtils,
-                  Testbasics,
-                  Tests
-   C-Sources: hdbc-postgresql-helper.c
-   include-dirs: .
-   Extra-Libraries: pq
-   Hs-Source-Dirs: ., testsrc
-   GHC-Options: -O2
-   Extensions: ExistentialQuantification,
-               ForeignFunctionInterface
+-- Executable runtests
+--    if flag(buildtests)
+--       Buildable: True
+--       Build-Depends: HUnit, QuickCheck, testpack, containers,
+--                      convertible, time, old-locale, parsec, utf8-string,
+--                      bytestring, old-time, base, HDBC>=2.2.6
+--    else
+--       Buildable: False
+--    Main-Is: runtests.hs
+--    Other-Modules: Database.HDBC.PostgreSQL.Connection,
+--                   Database.HDBC.PostgreSQL.ConnectionImpl,
+--                   Database.HDBC.PostgreSQL.Statement,
+--                   Database.HDBC.PostgreSQL.Types,
+--                   Database.HDBC.PostgreSQL.Utils,
+--                   Database.HDBC.PostgreSQL.Parser,
+--                   Database.HDBC.PostgreSQL.PTypeConv,
+--                   Database.HDBC.PostgreSQL.ErrorCodes,
+--                   SpecificDB,
+--                   SpecificDBTests,
+--                   TestMisc,
+--                   TestSbasics,
+--                   TestUtils,
+--                   Testbasics,
+--                   Tests
+--    C-Sources: hdbc-postgresql-helper.c
+--    include-dirs: .
+--    Extra-Libraries: pq
+--    Hs-Source-Dirs: ., testsrc
+--    GHC-Options: -O2
+--    Extensions: ExistentialQuantification,
+--                ForeignFunctionInterface
 
 source-repository head
   type:     git
