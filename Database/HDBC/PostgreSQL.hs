@@ -106,7 +106,7 @@ data PGStatementState =
 
 
 data PostgreStatement = PostgreStatement
-                        { stQuery :: TL.Text -- ^ Initial query
+                        { stQuery :: Query                  -- ^ Initial query
                         , stConnection :: PostgreConnection -- ^ Connection this statement working with
                         , stState :: MVar PGStatementState -- ^ State of statement
                         }
@@ -132,8 +132,6 @@ sqlValueToNative x = Just $ tonative x
 
     tonative :: SqlValue -> (PQ.Oid, B.ByteString, PQ.Format)
     tonative (SqlDecimal d)          = asText PS.Numeric d
-    tonative (SqlWord32 w)           = asText PS.Int8 w
-    tonative (SqlWord64 w)           = asText PS.Int8 w
     tonative (SqlInt32 i)            = asText PS.Int4 i
     tonative (SqlInt64 i)            = asText PS.Int8 i
     tonative (SqlInteger i)          = asText PS.Numeric i
@@ -154,7 +152,7 @@ formatToBS :: (FormatTime a) => String -> a -> B.ByteString
 formatToBS s d = toByteString $ fromString $ formatTime defaultTimeLocale s d
 
 formatUTC :: UTCTime -> B.ByteString
-formatUTC = formatToBS "%Y-%m-%d %H:%M:%S%Q %Z"
+formatUTC x = formatToBS "%Y-%m-%d %H:%M:%S%Q%z" x
 
 formatDay :: Day -> B.ByteString
 formatDay = formatToBS  "%Y-%m-%d"
@@ -238,12 +236,14 @@ nativeToSqlValue _ b PQ.Binary f = binFromNative (o2b f) b
     binFromNative x _ = throwIO $ SqlDriverError $ pgMsg $ "Can not parse bytes as (Binary format) as " ++ show x
 
 parseSome :: (ParseTime a) => String -> B.ByteString -> a
-parseSome fmt dt = case parseTime defaultTimeLocale fmt val of
-  Nothing -> throw $ SqlDriverError $ pgMsg $ "Could not parse " ++ val ++ " as Date/Time in format \"" ++ fmt ++ "\""
-  Just r  -> r
+parseSome fmt dt = parseVal fmt val
   where
     val = TL.unpack $ decodeUTF8 dt
 
+parseVal :: (ParseTime a) => String -> String -> a
+parseVal fmt val = case parseTime defaultTimeLocale fmt val of
+  Nothing -> throw $ SqlDriverError $ pgMsg $ "Could not parse " ++ val ++ " as Date/Time in format \"" ++ fmt ++ "\""
+  Just r  -> r
 
 parseT :: B.ByteString -> TimeOfDay
 parseT = parseSome "%H:%M:%S%Q"
@@ -255,7 +255,9 @@ parseD :: B.ByteString -> Day
 parseD = parseSome "%Y-%m-%d"
 
 parseUTC :: B.ByteString -> UTCTime
-parseUTC = parseSome "%Y-%m-%d %H:%M:%S%Q %Z"
+parseUTC u = parseVal "%Y-%m-%d %H:%M:%S%Q%z" val
+  where
+    val = (TL.unpack $ decodeUTF8 u) ++ "00" -- realy strange behaviour
 
 parseBit :: B.ByteString -> Word64
 parseBit bt = foldl makeBit 0 $ zip [0..] $ take (bitSize (undefined :: Word64)) $ reverse val
@@ -315,21 +317,21 @@ encodeUTF8 :: TL.Text -> B.ByteString
 encodeUTF8 = toByteString . fromLazyText
 
 decodeUTF8 :: B.ByteString -> TL.Text
-decodeUTF8 = TL.decodeUtf8 . BL.fromChunks . (:[])
+decodeUTF8 x = TL.decodeUtf8 $ BL.fromChunks [x]
 
-pgRun :: PostgreConnection -> TL.Text -> [SqlValue] -> IO PQ.Result
+pgRun :: PostgreConnection -> Query -> [SqlValue] -> IO PQ.Result
 pgRun conn query values = withPGConnection conn $ \con -> do
-  r <- PQ.execParams con (encodeUTF8 query) binvals PQ.Text
+  r <- PQ.execParams con (encodeUTF8 $ unQuery query) binvals PQ.Text
   getPGResult con r     -- Throwing error if failed
   where
     binvals = map sqlValueToNative values
 
-pgRunRaw :: PostgreConnection -> TL.Text -> IO PQ.Result
+pgRunRaw :: PostgreConnection -> Query -> IO PQ.Result
 pgRunRaw conn query = withPGConnection conn $ \con -> do
-    r <- PQ.exec con $ encodeUTF8 query
+    r <- PQ.exec con $ encodeUTF8 $ unQuery query
     getPGResult con r
 
-pgRunMany :: PostgreConnection -> TL.Text -> [[SqlValue]] -> IO ()
+pgRunMany :: PostgreConnection -> Query -> [[SqlValue]] -> IO ()
 pgRunMany conn query values = withPGConnection conn $ \con -> do
   forM_ values $ \val -> do
     r <- PQ.execParams con binq (binv val) PQ.Text
@@ -337,7 +339,7 @@ pgRunMany conn query values = withPGConnection conn $ \con -> do
     PQ.unsafeFreeResult res
     return ()
   where
-    binq = encodeUTF8 query
+    binq = encodeUTF8 $ unQuery query
     binv = map sqlValueToNative
 
 pgMsg :: String -> String
@@ -482,7 +484,7 @@ instance Statement PostgreStatement where
           ret <- forM (zip3 [0..cols-1] formats oids) $ \(col, fmt, oid) -> do
             mval <- PQ.getvalue' result current col
             case mval of
-              Nothing -> withPGConnection (stConnection stmt) throwErrorMessage
+              Nothing -> return SqlNull
               Just val -> withPGConnection (stConnection stmt) $ \con -> nativeToSqlValue con val fmt oid
           return (x {pgstCurrent = current + 1}, Just ret)
 

@@ -14,6 +14,11 @@ Stability: Stable
 Build-Type: Custom
 Cabal-Version: >=1.8
 
+source-repository head
+  type:     git
+  location: https://github.com/hdbc/hdbc-postgresql.git
+
+
 
 Library
   Exposed-Modules: Database.HDBC.PostgreSQL
@@ -34,38 +39,27 @@ Library
     Build-Depends: base >= 4
   Ghc-Options: -Wall
 
--- Executable runtests
---    if flag(buildtests)
---       Buildable: True
---       Build-Depends: HUnit, QuickCheck, testpack, containers,
---                      convertible, time, old-locale, parsec, utf8-string,
---                      bytestring, old-time, base, HDBC>=2.2.6
---    else
---       Buildable: False
---    Main-Is: runtests.hs
---    Other-Modules: Database.HDBC.PostgreSQL.Connection,
---                   Database.HDBC.PostgreSQL.ConnectionImpl,
---                   Database.HDBC.PostgreSQL.Statement,
---                   Database.HDBC.PostgreSQL.Types,
---                   Database.HDBC.PostgreSQL.Utils,
---                   Database.HDBC.PostgreSQL.Parser,
---                   Database.HDBC.PostgreSQL.PTypeConv,
---                   Database.HDBC.PostgreSQL.ErrorCodes,
---                   SpecificDB,
---                   SpecificDBTests,
---                   TestMisc,
---                   TestSbasics,
---                   TestUtils,
---                   Testbasics,
---                   Tests
---    C-Sources: hdbc-postgresql-helper.c
---    include-dirs: .
---    Extra-Libraries: pq
---    Hs-Source-Dirs: ., testsrc
---    GHC-Options: -O2
---    Extensions: ExistentialQuantification,
---                ForeignFunctionInterface
-
-source-repository head
-  type:     git
-  location: https://github.com/hdbc/hdbc-postgresql.git
+  
+test-suite runtests
+   type: exitcode-stdio-1.0
+   main-is: runtests.hs
+   hs-source-dirs: testsrc
+   ghc-options:   -Wall -fno-warn-orphans
+   build-depends:  base >= 3 && < 5
+                 , HDBC
+                 , HDBC-postgresql
+                 , convertible
+                 , QuickCheck
+                 , test-framework <= 0.7 
+                 , test-framework-quickcheck2
+                 , text
+                 , time
+                 , Decimal
+                 , uuid
+                 , ieee754
+                 , bytestring
+                 , quickcheck-assertions
+                 , quickcheck-instances
+                
+                
+  
