@@ -22,6 +22,7 @@ source-repository head
 
 Library
   Exposed-Modules: Database.HDBC.PostgreSQL
+                 , Database.HDBC.PostgreSQL.Implementation
   Build-Depends: base >= 3 && < 5
                , mtl
                , HDBC >= 3.0.0
