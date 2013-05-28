@@ -62,5 +62,22 @@ test-suite runtests
                  , quickcheck-assertions
                  , quickcheck-instances
                 
-                
-  
+test-suite puretests
+   type: exitcode-stdio-1.0
+   main-is: puretests.hs
+   hs-source-dirs: testsrc
+   ghc-options:   -Wall -fno-warn-orphans
+   build-depends:  base >= 3 && < 5
+                 , HDBC
+                 , HDBC-postgresql
+                 , QuickCheck
+                 , test-framework <= 0.7 
+                 , test-framework-quickcheck2
+                 , text
+                 , time
+                 , uuid
+                 , Decimal
+                 , bytestring
+                 , quickcheck-assertions
+                 , quickcheck-instances
+                 , derive
