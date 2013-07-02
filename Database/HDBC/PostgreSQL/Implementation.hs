@@ -40,6 +40,7 @@ module Database.HDBC.PostgreSQL.Implementation
 
 import Database.HDBC
 import Database.HDBC.DriverUtils
+import Database.HDBC.PostgreSQL.Parser (buildSqlQuery)
 import qualified Database.PostgreSQL.LibPQ as PQ
 import qualified Database.PostgreSQL.Simple.BuiltinTypes as PS
 
@@ -95,7 +96,7 @@ data PGStatementState =
 data PostgreStatement = PostgreStatement
                         { stQuery :: Query                  -- ^ Initial query
                         , stConnection :: PostgreConnection -- ^ Connection this statement working with
-                        , stState :: MVar PGStatementState -- ^ State of statement
+                        , stState :: MVar PGStatementState  -- ^ State of statement
                         }
                         deriving (Typeable)
 
@@ -165,11 +166,6 @@ instance Statement PostgreStatement where
   execute stmt values = modifyMVar_ (stState stmt)
                         $ \st -> withPGSTNew st $ do
     res <- pgRun (stConnection stmt) (stQuery stmt) values
-    return $ STExecuted res
-
-  executeRaw stmt = modifyMVar_ (stState stmt)
-                    $ \st -> withPGSTNew st $ do
-    res <- pgRunRaw (stConnection stmt) (stQuery stmt)
     return $ STExecuted res
 
   executeMany stmt vals = withMVar (stState stmt)
@@ -280,14 +276,13 @@ sqlValueToNative x = Just $ tonative x
     tonative (SqlDouble d)           = asText PS.Float8 d
     tonative (SqlText t)             = (PS.builtin2oid PS.Text, encodeUTF8 t, PQ.Text)
     tonative (SqlBlob b)             = (PS.builtin2oid PS.ByteA, b, PQ.Binary)
-    tonative (SqlBool b)             = (PS.builtin2oid PS.Bool, if b then "TRUE" else "FALSE", PQ.Text)
+    tonative (SqlBool b)             = (PS.builtin2oid PS.Bool, if b then "t" else "f", PQ.Text)
     tonative (SqlBitField b)         = (PS.builtin2oid PS.VarBit, formatBits b, PQ.Text)
     tonative (SqlUUID u)             = (PS.builtin2oid PS.UUID, toByteString $ fromString $ U.toString u, PQ.Text)
     tonative (SqlUTCTime ut)         = (PS.builtin2oid PS.TimestampTZ, formatUTC ut, PQ.Text)
     tonative (SqlLocalDate d)        = (PS.builtin2oid PS.Date, formatDay d, PQ.Text)
     tonative (SqlLocalTimeOfDay tod) = (PS.builtin2oid PS.Time, formatT tod, PQ.Text)
     tonative (SqlLocalTime t)        = (PS.builtin2oid PS.Timestamp, formatDT t, PQ.Text)
-    tonative SqlNow                  = (PS.builtin2oid PS.TimestampTZ, "NOW()", PQ.Text)
     tonative SqlNull                 = error "SqlNull is passed to 'tonative' internal function, this is a bug"
 
 
@@ -386,36 +381,36 @@ nativeToSqlValue b PQ.Text f = fromNative (o2b f) b
 nativeToSqlValue b PQ.Binary f = binFromNative (o2b f) b
   where
     binFromNative PS.ByteA x = return $ SqlBlob x
-    binFromNative x _ = throwIO $ SqlDriverError $ pgMsg $ "Can not parse bytes as (Binary format) as " ++ show x
+    binFromNative x _ = throwIO $ SqlDriverError $ pgMsg $ "Can not parse bytes (Binary result format) as " ++ show x
 
-parseSome :: (ParseTime a) => String -> B.ByteString -> a
-parseSome fmt dt = parseVal fmt val
+parseDTBytes :: (ParseTime a) => String -> B.ByteString -> a
+parseDTBytes fmt dt = parseDTString fmt val
   where
     val = TL.unpack $ decodeUTF8 dt
 
-parseVal :: (ParseTime a) => String -> String -> a
-parseVal fmt val = case parseTime defaultTimeLocale fmt val of
+parseDTString :: (ParseTime a) => String -> String -> a
+parseDTString fmt val = case parseTime defaultTimeLocale fmt val of
   Nothing -> throw $ SqlDriverError $ pgMsg $ "Could not parse " ++ val ++ " as Date/Time in format \"" ++ fmt ++ "\""
   Just r  -> r
 
 
 -- | parse ByteString as `TimeOfDay`
 parseT :: B.ByteString -> TimeOfDay
-parseT = parseSome "%H:%M:%S%Q"
+parseT = parseDTBytes "%H:%M:%S%Q"
 
 -- | parse ByteString as `LocalTime`
 parseDT :: B.ByteString -> LocalTime
-parseDT = parseSome "%Y-%m-%d %H:%M:%S%Q"
+parseDT = parseDTBytes "%Y-%m-%d %H:%M:%S%Q"
 
 -- | parse ByteString as `Day`
 parseD :: B.ByteString -> Day
-parseD = parseSome "%Y-%m-%d"
+parseD = parseDTBytes "%Y-%m-%d"
 
 -- | parse ByteString as `UTCTime`
 parseUTC :: B.ByteString -> UTCTime
-parseUTC u = parseVal "%Y-%m-%d %H:%M:%S%Q%z" val
+parseUTC u = parseDTString "%Y-%m-%d %H:%M:%S%Q%z" val
   where
-    val = (TL.unpack $ decodeUTF8 u) ++ "00" -- realy strange behaviour
+    val = (TL.unpack $ decodeUTF8 u) ++ "00" -- strange Postgre behaviour
 
 -- | parse ByteString as 64 bit field (b'00101110') and convert to Word64
 parseBit :: B.ByteString -> Word64
@@ -469,10 +464,12 @@ connectPostgreSQL constr = do
     PQ.ConnectionOk -> do
       done <- PQ.setClientEncoding con "UTF8"
       when (not done) $ throwErrorMessage con
-      PostgreConnection
-        <$> (newMVar $ Just con)
-        <*> newChildList
-        <*> (return constr)
+      ret <- PostgreConnection
+             <$> (newMVar $ Just con)
+             <*> newChildList
+             <*> (return constr)
+      runRaw ret "set timezone='utc'"
+      return ret
     _ -> throwErrorMessage con
 
 -- | encode `TL.Text` in UTF8 encoding
@@ -485,14 +482,14 @@ decodeUTF8 x = TL.decodeUtf8 $ BL.fromChunks [x]
 
 pgRun :: PostgreConnection -> Query -> [SqlValue] -> IO PQ.Result
 pgRun conn query values = withPGConnection conn $ \con -> do
-  r <- PQ.execParams con (encodeUTF8 $ unQuery query) binvals PQ.Text
+  r <- PQ.execParams con (buildSqlQuery query) binvals PQ.Text
   getPGResult con r     -- Throwing error if failed
   where
     binvals = map sqlValueToNative values
 
 pgRunRaw :: PostgreConnection -> Query -> IO PQ.Result
 pgRunRaw conn query = withPGConnection conn $ \con -> do
-    r <- PQ.exec con $ encodeUTF8 $ unQuery query
+    r <- PQ.exec con $ buildSqlQuery query
     getPGResult con r
 
 pgRunMany :: PostgreConnection -> Query -> [[SqlValue]] -> IO ()
@@ -503,7 +500,7 @@ pgRunMany conn query values = withPGConnection conn $ \con -> do
     PQ.unsafeFreeResult res
     return ()
   where
-    binq = encodeUTF8 $ unQuery query
+    binq = buildSqlQuery query
     binv = map sqlValueToNative
 
 -- | add "hdbc-postgresql: " before an argument
