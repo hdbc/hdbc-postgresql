@@ -128,6 +128,7 @@ testDollarLiteral = do
   parseToRight dollarLiteral "$tag$$$$$$ajs$$$tag$"
   parseToLeft dollarLiteral "$a$jaisdj$$" -- tag mismatch
   parseToLeft dollarLiteral "$a$ aisj\\$a $"
+  parseToLeft dollarLiteral "$4sf$hello$4sf$" -- tag started with digit
 
 testInlineComment :: Assertion
 testInlineComment = do
@@ -210,6 +211,11 @@ lineCommentGen = do
   end <- elements ["", "\n"]
   return $ "--" ++ body ++ end
 
+parameterPlaceholderGen :: Gen String
+parameterPlaceholderGen = do
+  (v :: Int) <- getPositive <$> arbitrary
+  return $ "$" ++ (show v)
+
 data GenS = GenQ String         -- ^ Generate string as is
           | GenR                -- ^ Generate $1, $2 sequence in this place
 
@@ -219,6 +225,7 @@ generateQueryPiece = oneof
                      , quote dollarLiteralGen
                      , quote qidentifierGen
                      , quote inlineCommentGen
+                     , quote parameterPlaceholderGen
                      , quote ((++ "\n") <$> lineCommentGen)
                      -- , quote $ return "\\?"
                      , return ("?", GenR)

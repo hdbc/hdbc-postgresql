@@ -74,36 +74,48 @@ qidentifier = qidentifier' <?> "Quoted identifier parser"
 literal :: Parser [ParseResult]
 literal = quoteLiteral <|> dollarLiteral
 
+data QLChar = BackQ
+            | Quote
+            | Other 
+
 quoteLiteral :: Parser [ParseResult]
 quoteLiteral = literal' <?> "Literal string parser"
   where
     literal' = do
       _ <- char '\'' <?> "First quote"
-      res <- scan 'a' scanner
+      res <- scan Other scanner
       let quotes = T.count "'" res
           bquotes = T.count "\\'" res
       if (quotes - bquotes) `mod` 2 == 0
         then fail "the number of quotes must be even"
         else return [PQuoteString "'", PQuoteText res]
 
-    scanner '\'' '\'' = Just 'a'
-    scanner '\'' _ = Nothing
-    scanner '\\' '\'' = Just 'a'
-    scanner '\\' _ = Just 'a'
-    scanner _ '\'' = Just '\''
-    scanner _ '\\' = Just '\\'
-    scanner _ _ = Just 'a'
+    scanner Quote '\'' = Just Other
+    scanner Quote _ = Nothing
+    scanner BackQ _ = Just Other
+    scanner Other '\'' = Just Quote
+    scanner Other '\\' = Just BackQ
+    scanner Other _ = Just Other
 
 dollarLiteral :: Parser [ParseResult]
 dollarLiteral = dollarLiteral' <?> "Dollar quoted literal string parser"
   where
     dollarLiteral' = do
       _ <- char '$'
-      tag <- takeTill (== '$')
+      tag <- tagParser <?> "Tag name parser"
       _ <- char '$'
       body <- (manyTill anyChar $ (char '$' >> string tag >> char '$')) <?> "Dollar quoted string body"
       let prepost = [PQuoteString "$", PQuoteText tag, PQuoteString "$"]
       return $ prepost ++ [PQuoteString body] ++ prepost
+
+    tagParser = do
+      ret <- takeTill (== '$')
+      case T.length ret of
+        0 -> return ret
+        _ -> if inClass ['0'..'9'] $ T.head ret
+             then fail "First character must not be digit"
+             else return ret
+      
 
 sqlParser :: Parser [ParseResult]
 sqlParser = concat <$> (many' $ choice [ normalText

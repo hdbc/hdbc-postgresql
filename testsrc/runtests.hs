@@ -59,16 +59,6 @@ runInsertSelect conn tname val = withTransaction conn $ do
       finish s
       return $ convert res
 
-fetchAll :: (Statement s) => s -> IO [[SqlValue]]
-fetchAll s = fetchAll' []
-  where
-    fetchAll' ac = do
-      r <- fetchRow s
-      case r of
-        Nothing -> return ac
-        Just ret -> fetchAll' (ret:ac)
-
-
 runInsertMany :: PostgreConnection -> [String] -> [[SqlValue]] -> IO [[SqlValue]]
 runInsertMany conn types values = withTransaction conn $ do
   runRaw conn "drop table if exists table1"
@@ -78,7 +68,7 @@ runInsertMany conn types values = withTransaction conn $ do
   finish s
   s2 <- prepare conn $ pk $ "select " ++ colnames ++ " from table1"
   executeRaw s2
-  fetchAll s2
+  fetchAllRows s2
   
   where
     pk = Query . TL.pack

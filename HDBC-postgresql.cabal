@@ -48,7 +48,7 @@ test-suite runtests
    main-is: testsrc/runtests.hs
    other-modules: Database.HDBC.PostgreSQL.Implementation
                 , Database.HDBC.PostgreSQL.Parser
-   ghc-options:   -Wall -fno-warn-orphans -fhpc -fprof-auto -main-is Runtests
+   ghc-options:   -Wall -fno-warn-orphans -main-is Runtests
    build-depends:  base >= 3 && < 5
                  , HDBC
                  , convertible
@@ -78,7 +78,7 @@ test-suite puretests
    main-is: testsrc/puretests.hs
    other-modules: Database.HDBC.PostgreSQL.Implementation
                 , Database.HDBC.PostgreSQL.Parser
-   ghc-options:   -Wall -fno-warn-orphans -fhpc -fprof-auto -main-is Puretests
+   ghc-options:   -Wall -fno-warn-orphans -main-is Puretests
    build-depends:  base >= 3 && < 5
                  , HDBC
                  , QuickCheck
