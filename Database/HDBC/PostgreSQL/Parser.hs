@@ -2,21 +2,21 @@
   OverloadedStrings
   #-}
 
-module Database.HDBC.PostgreSQL.Parser where
+module Database.HDBC.PostgreSQL.Parser
+       (
+         buildSqlQuery
+       ) where
 
-import Prelude hiding (take)
-import Database.HDBC.Types (Query(..), SqlError(..))
-
-import Data.Attoparsec.Text.Lazy
-import qualified Data.Text.Lazy as TL
-import qualified Data.Text as T
-import qualified Data.ByteString as B
-import Blaze.ByteString.Builder.Char.Utf8 (fromText, fromString)
 import Blaze.ByteString.Builder (toByteString)
-
-import Control.Exception (throw)
+import Blaze.ByteString.Builder.Char.Utf8 (fromText, fromString)
 import Control.Applicative ((<$>), Alternative(..))
+import Control.Exception (throw)
+import Data.Attoparsec.Text.Lazy
 import Data.Monoid ((<>), mempty)
+import Database.HDBC.Types (Query(..), SqlError(..))
+import Prelude hiding (take)
+import qualified Data.ByteString as B
+import qualified Data.Text as T
 
 data ParseResult =
   -- | copy Text to the result
@@ -133,7 +133,7 @@ buildSqlQuery (Query q) = case eitherResult $ parse sqlParser q of
   Right r -> buildBS r
 
 buildBS :: [ParseResult] -> B.ByteString
-buildBS r = toByteString $ fst $ foldl bsr (mempty, 1) r
+buildBS r = toByteString $ fst $ foldl bsr (mempty, 1 :: Integer) r
   where
     bsr (res, n) (PQuoteText t)   = (res <> fromText t, n)
     bsr (res, n) (PQuoteString s) = (res <> fromString s, n)

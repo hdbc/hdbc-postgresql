@@ -1,22 +1,22 @@
-Name: HDBC-postgresql
-Version: 3.0.0
+Name: hdbcng-postgresql
+Version: 1.0.0
 License: BSD3
 Maintainer: Nicolas Wu <nicolas.wu@gmail.com>
 Author: John Goerzen
 Copyright: Copyright (c) 2005-2011 John Goerzen
 license-file: LICENSE
-homepage: http://github.com/hdbc/hdbc-postgresql
+homepage: https://github.com/s9gf4ult/hdbc-postgresql
 Category: Database
-synopsis: PostgreSQL driver for HDBC
-Description: This package provides a PostgreSQL driver for HDBC
-Stability: Stable
+synopsis: PostgreSQL driver for hdbcng
+Description: This package provides a PostgreSQL driver for hdbcng
+Stability: experimental
 
-Build-Type: Custom
+Build-Type: Simple
 Cabal-Version: >=1.8
 
 source-repository head
   type:     git
-  location: https://github.com/hdbc/hdbc-postgresql.git
+  location: https://github.com/s9gf4ult/hdbc-postgresql.git
 
 
 
@@ -25,22 +25,23 @@ Library
                  , Database.HDBC.PostgreSQL.Implementation
                  , Database.HDBC.PostgreSQL.Parser
   Build-Depends: base >= 3 && < 5
-               , mtl
-               , HDBC >= 3.0.0
-               , postgresql-libpq
-               , postgresql-simple
+               , attoparsec
                , blaze-builder
                , bytestring
-               , text
-               , attoparsec
-               , safe
-               , time
+               , hdbcng >= 1.0.0
+               , mtl
                , old-locale
+               , postgresql-libpq
+               , postgresql-simple
+               , safe
+               , text
+               , time
                , uuid
 
   if impl(ghc >= 6.9)
     Build-Depends: base >= 4
   Ghc-Options: -Wall
+  ghc-prof-options: -auto-all
 
   
 test-suite runtests
@@ -48,55 +49,59 @@ test-suite runtests
    main-is: testsrc/runtests.hs
    other-modules: Database.HDBC.PostgreSQL.Implementation
                 , Database.HDBC.PostgreSQL.Parser
+                
    ghc-options:   -Wall -fno-warn-orphans -main-is Runtests
    build-depends:  base >= 3 && < 5
-                 , HDBC
-                 , convertible
-                 , QuickCheck
-                 , HUnit
-                 , test-framework <= 0.7 
-                 , test-framework-quickcheck2
-                 , test-framework-hunit
-                 , text
-                 , attoparsec
-                 , time
                  , Decimal
-                 , uuid
-                 , ieee754
+                 , HUnit
+                 , QuickCheck
+                 , attoparsec
+                 , blaze-builder
                  , bytestring
+                 , containers
+                 , hdbcng >= 1.0.0
+                 , ieee754
+                 , mtl
+                 , old-locale
+                 , postgresql-libpq
+                 , postgresql-simple
                  , quickcheck-assertions
                  , quickcheck-instances
-                 , containers
-                 , old-locale
-                 , blaze-builder
                  , safe
-                 , postgresql-simple
-                 , postgresql-libpq
+                 , test-framework <= 0.7 
+                 , test-framework-hunit
+                 , test-framework-quickcheck2
+                 , text
+                 , time
+                 , uuid
+                 
                 
 test-suite puretests
    type: exitcode-stdio-1.0
    main-is: testsrc/puretests.hs
    other-modules: Database.HDBC.PostgreSQL.Implementation
                 , Database.HDBC.PostgreSQL.Parser
+                
    ghc-options:   -Wall -fno-warn-orphans -main-is Puretests
    build-depends:  base >= 3 && < 5
-                 , HDBC
-                 , QuickCheck
-                 , HUnit
-                 , test-framework <= 0.7 
-                 , test-framework-quickcheck2
-                 , test-framework-hunit
-                 , text
-                 , attoparsec
-                 , time
-                 , uuid
                  , Decimal
+                 , HUnit
+                 , QuickCheck
+                 , attoparsec
+                 , blaze-builder
                  , bytestring
+                 , derive
+                 , hdbcng >= 1.0.0
+                 , mtl
+                 , old-locale
+                 , postgresql-libpq
+                 , postgresql-simple
                  , quickcheck-assertions
                  , quickcheck-instances
-                 , derive
-                 , old-locale
-                 , blaze-builder
                  , safe
-                 , postgresql-simple
-                 , postgresql-libpq
+                 , test-framework <= 0.7 
+                 , test-framework-hunit
+                 , test-framework-quickcheck2
+                 , text
+                 , time
+                 , uuid

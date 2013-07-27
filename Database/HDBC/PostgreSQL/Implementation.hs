@@ -38,33 +38,31 @@ module Database.HDBC.PostgreSQL.Implementation
        , pgstGetResult
        ) where
 
+import Blaze.ByteString.Builder (toByteString)
+import Blaze.ByteString.Builder.ByteString (fromByteString)
+import Blaze.ByteString.Builder.Char.Utf8 (fromLazyText, fromString)
+import Control.Applicative
+import Control.Concurrent.MVar
+import Control.Exception
+import Control.Monad
+import Data.Bits
+import Data.Monoid
+import Data.Time
+import Data.Typeable
+import Data.Word
 import Database.HDBC
 import Database.HDBC.DriverUtils
 import Database.HDBC.PostgreSQL.Parser (buildSqlQuery)
-import qualified Database.PostgreSQL.LibPQ as PQ
-import qualified Database.PostgreSQL.Simple.BuiltinTypes as PS
-
-import System.IO
-
-import Control.Monad
-import Control.Concurrent.MVar
-import Control.Exception
-import Control.Applicative
-import Data.Monoid
-import Data.Typeable
 import Safe
-import qualified Data.Text.Lazy as TL
-import qualified Data.Text.Lazy.Encoding as TL
+import System.IO
+import System.Locale (defaultTimeLocale)
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as BL
-import Blaze.ByteString.Builder.Char.Utf8 (fromLazyText, fromString)
-import Blaze.ByteString.Builder (toByteString)
-import Blaze.ByteString.Builder.ByteString (fromByteString)
-import Data.Time
-import System.Locale (defaultTimeLocale)
-import Data.Word
-import Data.Bits
+import qualified Data.Text.Lazy as TL
+import qualified Data.Text.Lazy.Encoding as TL
 import qualified Data.UUID as U
+import qualified Database.PostgreSQL.LibPQ as PQ
+import qualified Database.PostgreSQL.Simple.BuiltinTypes as PS
 
 data PostgreConnection = PostgreConnection
                          { postNative     :: MVar (Maybe PQ.Connection) -- ^ LibPQ connection if established
@@ -270,14 +268,12 @@ sqlValueToNative x = Just $ tonative x
 
     tonative :: SqlValue -> (PQ.Oid, B.ByteString, PQ.Format)
     tonative (SqlDecimal d)          = asText PS.Numeric d
-    tonative (SqlInt32 i)            = asText PS.Int4 i
-    tonative (SqlInt64 i)            = asText PS.Int8 i
     tonative (SqlInteger i)          = asText PS.Numeric i
     tonative (SqlDouble d)           = asText PS.Float8 d
     tonative (SqlText t)             = (PS.builtin2oid PS.Text, encodeUTF8 t, PQ.Text)
     tonative (SqlBlob b)             = (PS.builtin2oid PS.ByteA, b, PQ.Binary)
     tonative (SqlBool b)             = (PS.builtin2oid PS.Bool, if b then "t" else "f", PQ.Text)
-    tonative (SqlBitField b)         = (PS.builtin2oid PS.VarBit, formatBits b, PQ.Text)
+    tonative (SqlBitField b)         = (PS.builtin2oid PS.VarBit, formatBits $ unBitField b, PQ.Text)
     tonative (SqlUUID u)             = (PS.builtin2oid PS.UUID, toByteString $ fromString $ U.toString u, PQ.Text)
     tonative (SqlUTCTime ut)         = (PS.builtin2oid PS.TimestampTZ, formatUTC ut, PQ.Text)
     tonative (SqlLocalDate d)        = (PS.builtin2oid PS.Date, formatDay d, PQ.Text)
@@ -354,9 +350,9 @@ nativeToSqlValue b PQ.Text f = fromNative (o2b f) b
         Nothing -> throwIO $ SqlDriverError $ pgMsg "Could not unescape binary data, maybe format is wrong" 
         Just ret -> return $ SqlBlob ret
     fromNative PS.Char x        = return $ ftext x
-    fromNative PS.Int8 x        = return $ SqlInt64 $ bread "integer" x
-    fromNative PS.Int4 x        = return $ SqlInt32 $ bread "integer" x
-    fromNative PS.Int2 x        = return $ SqlInt32 $ bread "integer" x
+    fromNative PS.Int8 x        = return $ SqlInteger $ bread "integer" x
+    fromNative PS.Int4 x        = return $ SqlInteger $ bread "integer" x
+    fromNative PS.Int2 x        = return $ SqlInteger $ bread "integer" x
     fromNative PS.Text x        = return $ ftext x
     fromNative PS.Xml  x        = return $ ftext x
     fromNative PS.Float4 x      = return $ SqlDouble $ bread "float" x
@@ -367,8 +363,8 @@ nativeToSqlValue b PQ.Text f = fromNative (o2b f) b
     fromNative PS.Time x        = return $ SqlLocalTimeOfDay $ parseT x
     fromNative PS.Timestamp x   = return $ SqlLocalTime $ parseDT x
     fromNative PS.TimestampTZ x = return $ SqlUTCTime $ parseUTC x
-    fromNative PS.Bit x         = return $ SqlBitField $ parseBit x
-    fromNative PS.VarBit x      = return $ SqlBitField $ parseBit x
+    fromNative PS.Bit x         = return $ SqlBitField $ BitField $ parseBit x
+    fromNative PS.VarBit x      = return $ SqlBitField $ BitField $ parseBit x
     fromNative PS.Numeric x     = return $ SqlDecimal $ bread "numeric" x
     fromNative PS.Void _        = return $ SqlNull
     fromNative PS.UUID x        = SqlUUID <$> case U.fromString uval of

@@ -7,35 +7,31 @@
 
 module Runtests where
 
-import Test.HUnit ((@?=), Assertion)
-import Test.QuickCheck
-import Test.QuickCheck.Instances ()
-import Test.QuickCheck.Assertions
-import qualified Test.QuickCheck.Monadic as QM
-import Test.Framework
-import Test.Framework.Providers.QuickCheck2
-import Test.Framework.Providers.HUnit
+import Control.Applicative
+import Data.AEq
+import Data.Decimal
+import Data.Fixed
+import Data.Int
+import Data.List
+import Data.Monoid
+import Data.Time
+import Data.UUID
+import Data.Word
 import Database.HDBC
 import Database.HDBC.PostgreSQL
-
-import Data.List
-import Data.AEq
-import Data.Time
-import Data.Monoid
-import Data.Int
-import Data.Word
-import Data.UUID
-import Data.Convertible
-import Data.Fixed
-import qualified Data.Set as S
-import Control.Applicative
-import Data.Decimal
-
 import System.Environment
 import System.Exit
-
-import qualified Data.Text.Lazy as TL
+import Test.Framework
+import Test.Framework.Providers.HUnit
+import Test.Framework.Providers.QuickCheck2
+import Test.HUnit ((@?=), Assertion)
+import Test.QuickCheck
+import Test.QuickCheck.Assertions
+import Test.QuickCheck.Instances ()
 import qualified Data.ByteString as B
+import qualified Data.Set as S
+import qualified Data.Text.Lazy as TL
+import qualified Test.QuickCheck.Monadic as QM
 
 
 instance Arbitrary (DecimalRaw Integer) where
