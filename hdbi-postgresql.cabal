@@ -1,14 +1,14 @@
-Name: hdbcng-postgresql
+Name: hdbi-postgresql
 Version: 1.0.0
 License: BSD3
-Maintainer: Nicolas Wu <nicolas.wu@gmail.com>
+Maintainer: Aleksey Uymanov <s9gf4ult@gmail.com>
 Author: John Goerzen
 Copyright: Copyright (c) 2005-2011 John Goerzen
 license-file: LICENSE
-homepage: https://github.com/s9gf4ult/hdbc-postgresql
+homepage: https://github.com/s9gf4ult/hdbi-postgresql
 Category: Database
-synopsis: PostgreSQL driver for hdbcng
-Description: This package provides a PostgreSQL driver for hdbcng
+synopsis: PostgreSQL driver for hdbi
+Description: This package provides a PostgreSQL driver for hdbi
 Stability: experimental
 
 Build-Type: Simple
@@ -16,19 +16,17 @@ Cabal-Version: >=1.8
 
 source-repository head
   type:     git
-  location: https://github.com/s9gf4ult/hdbc-postgresql.git
-
-
+  location: https://github.com/s9gf4ult/hdbi-postgresql.git
 
 Library
-  Exposed-Modules: Database.HDBC.PostgreSQL
-                 , Database.HDBC.PostgreSQL.Implementation
-                 , Database.HDBC.PostgreSQL.Parser
+  Exposed-Modules: Database.HDBI.PostgreSQL
+                 , Database.HDBI.PostgreSQL.Implementation
+                 , Database.HDBI.PostgreSQL.Parser
   Build-Depends: base >= 3 && < 5
                , attoparsec
                , blaze-builder
                , bytestring
-               , hdbcng >= 1.0.0
+               , hdbi >= 1.0.0
                , mtl
                , old-locale
                , postgresql-libpq
@@ -43,13 +41,13 @@ Library
   Ghc-Options: -Wall
   ghc-prof-options: -auto-all
 
-  
+
 test-suite runtests
    type: exitcode-stdio-1.0
    main-is: testsrc/runtests.hs
-   other-modules: Database.HDBC.PostgreSQL.Implementation
-                , Database.HDBC.PostgreSQL.Parser
-                
+   other-modules: Database.HDBI.PostgreSQL.Implementation
+                , Database.HDBI.PostgreSQL.Parser
+
    ghc-options:   -Wall -fno-warn-orphans -main-is Runtests
    build-depends:  base >= 3 && < 5
                  , Decimal
@@ -59,7 +57,7 @@ test-suite runtests
                  , blaze-builder
                  , bytestring
                  , containers
-                 , hdbcng >= 1.0.0
+                 , hdbi >= 1.0.0
                  , ieee754
                  , mtl
                  , old-locale
@@ -68,20 +66,20 @@ test-suite runtests
                  , quickcheck-assertions
                  , quickcheck-instances
                  , safe
-                 , test-framework <= 0.7 
+                 , test-framework <= 0.7
                  , test-framework-hunit
                  , test-framework-quickcheck2
                  , text
                  , time
                  , uuid
-                 
-                
+
+
 test-suite puretests
    type: exitcode-stdio-1.0
    main-is: testsrc/puretests.hs
-   other-modules: Database.HDBC.PostgreSQL.Implementation
-                , Database.HDBC.PostgreSQL.Parser
-                
+   other-modules: Database.HDBI.PostgreSQL.Implementation
+                , Database.HDBI.PostgreSQL.Parser
+
    ghc-options:   -Wall -fno-warn-orphans -main-is Puretests
    build-depends:  base >= 3 && < 5
                  , Decimal
@@ -91,7 +89,7 @@ test-suite puretests
                  , blaze-builder
                  , bytestring
                  , derive
-                 , hdbcng >= 1.0.0
+                 , hdbi >= 1.0.0
                  , mtl
                  , old-locale
                  , postgresql-libpq
@@ -99,7 +97,7 @@ test-suite puretests
                  , quickcheck-assertions
                  , quickcheck-instances
                  , safe
-                 , test-framework <= 0.7 
+                 , test-framework <= 0.7
                  , test-framework-hunit
                  , test-framework-quickcheck2
                  , text
