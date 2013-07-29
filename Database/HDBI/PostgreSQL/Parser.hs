@@ -2,7 +2,7 @@
   OverloadedStrings
   #-}
 
-module Database.HDBC.PostgreSQL.Parser
+module Database.HDBI.PostgreSQL.Parser
        (
          buildSqlQuery
          -- * partial parsers
@@ -20,7 +20,7 @@ import Control.Applicative ((<$>), Alternative(..))
 import Control.Exception (throw)
 import Data.Attoparsec.Text.Lazy
 import Data.Monoid ((<>), mempty)
-import Database.HDBC.Types (Query(..), SqlError(..))
+import Database.HDBI.Types (Query(..), SqlError(..))
 import Prelude hiding (take)
 import qualified Data.ByteString as B
 import qualified Data.Text as T

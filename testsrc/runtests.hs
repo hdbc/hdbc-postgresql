@@ -17,8 +17,8 @@ import Data.Monoid
 import Data.Time
 import Data.UUID
 import Data.Word
-import Database.HDBC
-import Database.HDBC.PostgreSQL
+import Database.HDBI
+import Database.HDBI.PostgreSQL
 import System.Environment
 import System.Exit
 import Test.Framework

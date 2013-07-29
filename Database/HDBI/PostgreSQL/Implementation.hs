@@ -5,7 +5,7 @@
   #-}
 
 
-module Database.HDBC.PostgreSQL.Implementation
+module Database.HDBI.PostgreSQL.Implementation
        (
          -- * Types
          PostgreConnection(..)
@@ -51,10 +51,10 @@ import Data.Monoid
 import Data.Time
 import Data.Typeable
 import Data.Word
-import Database.HDBC
-import Database.HDBC.DriverUtils
-import Database.HDBC.Parsers
-import Database.HDBC.PostgreSQL.Parser (buildSqlQuery)
+import Database.HDBI
+import Database.HDBI.DriverUtils
+import Database.HDBI.Parsers
+import Database.HDBI.PostgreSQL.Parser (buildSqlQuery)
 import Safe
 import System.IO
 import System.Locale (defaultTimeLocale)

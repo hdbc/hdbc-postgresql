@@ -18,9 +18,9 @@ import Data.DeriveTH
 import Data.List (intercalate, isInfixOf, mapAccumL, intersperse)
 import Data.Monoid (mconcat)
 import Data.UUID (UUID, fromWords)
-import Database.HDBC
-import Database.HDBC.PostgreSQL.Implementation
-import Database.HDBC.PostgreSQL.Parser
+import Database.HDBI
+import Database.HDBI.PostgreSQL.Implementation
+import Database.HDBI.PostgreSQL.Parser
 import Test.Framework
 import Test.Framework.Providers.HUnit
 import Test.Framework.Providers.QuickCheck2
