@@ -8,34 +8,30 @@
 
 module Puretests where
 
-import Test.QuickCheck
-import qualified Test.QuickCheck.Property as QP
-import Test.QuickCheck.Instances ()
-import Test.QuickCheck.Assertions
-import Test.QuickCheck.Gen
-import qualified Test.QuickCheck.Monadic as QM
-
-import Test.HUnit (assertFailure, Assertion, (@?=))
-import Test.Framework
-import Test.Framework.Providers.QuickCheck2
-import Test.Framework.Providers.HUnit
+import Blaze.ByteString.Builder (toByteString)
+import Blaze.ByteString.Builder.Char.Utf8 (fromString)
+import Control.Applicative
+import Data.Attoparsec.Text.Lazy
+import Data.Decimal
+import Data.Derive.Arbitrary
+import Data.DeriveTH
+import Data.List (intercalate, isInfixOf, mapAccumL, intersperse)
+import Data.Monoid (mconcat)
+import Data.UUID (UUID, fromWords)
 import Database.HDBC
 import Database.HDBC.PostgreSQL.Implementation
 import Database.HDBC.PostgreSQL.Parser
-import Data.List (intercalate, isInfixOf, mapAccumL, intersperse)
-import Data.Monoid (mconcat)
-import Data.UUID (UUID(..), fromWords)
-import Data.Decimal
-import Data.Attoparsec.Text.Lazy
-import Control.Applicative
-import qualified Data.Text.Lazy as TL
+import Test.Framework
+import Test.Framework.Providers.HUnit
+import Test.Framework.Providers.QuickCheck2
+import Test.HUnit (assertFailure, Assertion, (@?=))
+import Test.QuickCheck
+import Test.QuickCheck.Assertions
+import Test.QuickCheck.Instances ()
 import qualified Data.ByteString as B
-
-import Blaze.ByteString.Builder.Char.Utf8 (fromString)
-import Blaze.ByteString.Builder (toByteString)
-
-import Data.Derive.Arbitrary
-import Data.DeriveTH
+import qualified Data.Text.Lazy as TL
+import qualified Test.QuickCheck.Monadic as QM
+import qualified Test.QuickCheck.Property as QP
 
 instance Arbitrary (DecimalRaw Integer) where
   arbitrary = Decimal <$> arbitrary <*> arbitrary
@@ -46,6 +42,9 @@ instance Arbitrary UUID where
               <*> arbitrary
               <*> arbitrary
               <*> arbitrary
+
+instance Arbitrary BitField where
+  arbitrary = BitField <$> arbitrary
 
 $( derive makeArbitrary ''SqlValue )
 
@@ -61,22 +60,9 @@ sqlToNativeAndBack val = QM.monadicIO $ do
       Just (o, b, f) -> nativeToSqlValue b f o
   QM.stop $ res ?== val
 
-genNonUTC :: Gen SqlValue       -- UTCTime fails, because the database return
-                                -- datetime not in same format
-genNonUTC = suchThat arbitrary nonUTC
-  where
-    nonUTC (SqlUTCTime _) = False
-    nonUTC _ = True
-
-
 convertionTests :: Test
 convertionTests = testGroup "Can convert to and back"
-                  [ testProperty "Bit field" $  isID formatBits parseBit
-                  , testProperty "Day" $ isID formatDay parseD
-                  , testProperty "TimeOfDay" $ isID formatT parseT
-                  , testProperty "LocalTime" $ isID formatDT parseDT
-                  , testProperty "SqlValue" $ forAll genNonUTC $ sqlToNativeAndBack
-                  ]
+                  [testProperty "SqlValue" sqlToNativeAndBack]
 
 parseToLeft :: (Show a) => Parser a -> TL.Text -> Assertion
 parseToLeft p t = case eitherResult $ parse p t of

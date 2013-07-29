@@ -44,16 +44,16 @@ instance Arbitrary UUID where
               <*> arbitrary
               <*> arbitrary
 
-runInsertSelect :: (Convertible a SqlValue, Convertible SqlValue a) => PostgreConnection -> Query -> a -> IO a
+runInsertSelect :: (FromSql a, ToSql a) => PostgreConnection -> Query -> a -> IO a
 runInsertSelect conn tname val = withTransaction conn $ do
       runRaw conn "drop table if exists table1"
       runRaw conn $ "create table table1 (val " <> tname <> ")"
-      run conn "insert into table1 (val) values (?)" [convert val]
+      run conn "insert into table1 (val) values (?)" [toSql val]
       s <- prepare conn "select val from table1"
       executeRaw s
       (Just [res])<- fetchRow s
       finish s
-      return $ convert res
+      return $ fromSql res
 
 runInsertMany :: PostgreConnection -> [String] -> [[SqlValue]] -> IO [[SqlValue]]
 runInsertMany conn types values = withTransaction conn $ do
@@ -77,13 +77,13 @@ setsEqual conn types values = QM.monadicIO $ do
   ret <- QM.run $ runInsertMany conn types values
   QM.stop $ (S.fromList values) ==? (S.fromList ret)
   
-preciseEqual :: (Eq a, Show a, Convertible SqlValue a, Convertible a SqlValue) => PostgreConnection -> Query -> a -> Property
+preciseEqual :: (Eq a, Show a, FromSql a, ToSql a) => PostgreConnection -> Query -> a -> Property
 preciseEqual conn tname val = QM.monadicIO $ do
   res <- QM.run $ runInsertSelect conn tname val
   QM.stop $ res ?== val
 
 
-approxEqual :: (Show a, AEq a, Convertible SqlValue a, Convertible a SqlValue) => PostgreConnection -> Query -> a -> Property
+approxEqual :: (Show a, AEq a, FromSql a, ToSql a) => PostgreConnection -> Query -> a -> Property
 approxEqual conn tname val = QM.monadicIO $ do
   res <- QM.run $ runInsertSelect conn tname val
   QM.stop $ res ?~== val
@@ -127,7 +127,7 @@ testG1 c = testGroup "Can insert and select"
            , testProperty "ByteString" $ \(b :: B.ByteString) -> preciseEqual c "bytea" b
            , testProperty "Bool" $ \(b :: Bool) -> preciseEqual c "boolean" b
            , testProperty "UUID" $ \(u :: UUID) -> preciseEqual c "uuid" u
-           , testProperty "BitField" $ \(w :: Word64) -> preciseEqual c "varbit" (SqlBitField w)
+           , testProperty "BitField" $ \(w :: Word64) -> preciseEqual c "varbit" (BitField w)
            , testProperty "UTCTime" $ forAll genUTC $ \(u :: UTCTime) -> preciseEqual c "timestamp with time zone" u
            , testProperty "Day" $ \(d :: Day) -> preciseEqual c "date" d
            , testProperty "TimeOfDay" $ forAll genTOD $ \(tod :: TimeOfDay) -> preciseEqual c "time" tod
@@ -137,10 +137,10 @@ testG1 c = testGroup "Can insert and select"
            , testProperty "Maybe ByteString" $ \(val :: Maybe B.ByteString) -> preciseEqual c "bytea" val
            , testProperty "Insert many numbers" $ \(x :: [(Integer, Decimal)]) -> setsEqual c
                                                                           ["decimal(100,0)", "decimal(400,255)"]
-                                                                          $ map (\(i, d) ->  [convert i, convert d]) x
+                                                                          $ map (\(i, d) ->  [toSql i, toSql d]) x
            , testProperty "Insert many text" $ \(x :: [(Maybe Integer, UUID, Maybe B.ByteString)]) -> setsEqual c
                                                                                                       ["decimal(100,0)", "text", "bytea"]
-                                                                                                      $ map (\(i, u, b) ->  [convert i, convert u, convert b]) x
+                                                                                                      $ map (\(i, u, b) ->  [toSql i, toSql u, toSql b]) x
            ]
 
 testAffectedRows :: PostgreConnection -> [Int32] -> Property
@@ -148,7 +148,7 @@ testAffectedRows c is = QM.monadicIO $ do
   res <- QM.run $ withTransaction c $ do
     runRaw c "drop table if exists table1"
     runRaw c "create table table1 (val bigint)"
-    runMany c "insert into table1(val) values (?)" $ map ((:[]) . convert) is
+    runMany c "insert into table1(val) values (?)" $ map ((:[]) . toSql) is
 
     s2 <- prepare c "update table1 set val=10"
     executeRaw s2

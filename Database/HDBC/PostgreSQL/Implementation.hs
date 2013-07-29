@@ -28,7 +28,7 @@ module Database.HDBC.PostgreSQL.Implementation
        , parseD
        , parseUTC
        , parseBit
-         -- * Miscellaneous functions 
+         -- * Miscellaneous functions
        , throwErrorMessage
        , getPGResult
        , throwResultError
@@ -46,16 +46,19 @@ import Control.Concurrent.MVar
 import Control.Exception
 import Control.Monad
 import Data.Bits
+import Data.List (intercalate)
 import Data.Monoid
 import Data.Time
 import Data.Typeable
 import Data.Word
 import Database.HDBC
 import Database.HDBC.DriverUtils
+import Database.HDBC.Parsers
 import Database.HDBC.PostgreSQL.Parser (buildSqlQuery)
 import Safe
 import System.IO
 import System.Locale (defaultTimeLocale)
+import qualified Data.Attoparsec.Text.Lazy as P
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as BL
 import qualified Data.Text.Lazy as TL
@@ -289,12 +292,12 @@ formatToBS s d = toByteString $ fromString $ formatTime defaultTimeLocale s d
 -- | Format UTCTime as ByteString
 formatUTC :: UTCTime -> B.ByteString
 formatUTC x = formatToBS "%Y-%m-%d %H:%M:%S%Q%z" x
-              
+
 -- | Format Day as ByteString
 formatDay :: Day -> B.ByteString
 formatDay = formatToBS  "%Y-%m-%d"
 
--- | format TimeOfDay to ByteString            
+-- | format TimeOfDay to ByteString
 formatT :: TimeOfDay -> B.ByteString
 formatT = formatToBS "%H:%M:%S%Q"
 
@@ -302,7 +305,7 @@ formatT = formatToBS "%H:%M:%S%Q"
 formatDT :: LocalTime -> B.ByteString
 formatDT = formatToBS "%Y-%m-%d %H:%M:%S%Q"
 
--- | format Word64 as bit field (b'001010111')
+-- | format Word64 as bit field (001010111)
 formatBits :: Word64 -> B.ByteString
 formatBits 0 = "0"
 formatBits w = toByteString $ bits
@@ -325,6 +328,17 @@ o2b fmt = case PS.oid2builtin fmt of
   Nothing -> throw $ SqlDriverError $ pgMsg $ "Could not understand returned type, OID=" ++ show fmt
   Just r  -> r
 
+-- | Try parse text with given parser. If parsing failed throw SqlError
+parseFromNative :: String -> P.Parser a -> TL.Text -> a
+parseFromNative m p t = case P.parse p t of
+  P.Done _ r        -> r
+  P.Fail _ cont msg -> throw $ SqlDriverError
+                     $ "Could not parse "
+                     ++ show t
+                     ++ " as " ++ m
+                     ++ " parser context is: " ++ (intercalate ", " cont)
+                     ++ " message: " ++ msg
+
 -- | convert native LibPQ data representation to `SqlValue`. Now support just
 -- `PQ.Text` format completely. Maybe binary protocol will be added in future
 -- versions.
@@ -333,13 +347,6 @@ nativeToSqlValue b PQ.Text f = fromNative (o2b f) b
   where
     ftext x = SqlText $ decodeUTF8 x
 
-    bread what x = case readMay $ val of
-      Nothing -> throw $ SqlDriverError $ pgMsg $ "could not read \"" ++ val ++ "\" as " ++ what
-      Just r  -> r
-      where
-        val = TL.unpack $ decodeUTF8 x
-
-
     fromNative PS.Bool x = case x of
       "t" -> return $ SqlBool True
       "f" -> return $ SqlBool False
@@ -347,25 +354,56 @@ nativeToSqlValue b PQ.Text f = fromNative (o2b f) b
     fromNative PS.ByteA x = do
       r <- PQ.unescapeBytea x
       case r of
-        Nothing -> throwIO $ SqlDriverError $ pgMsg "Could not unescape binary data, maybe format is wrong" 
+        Nothing -> throwIO $ SqlDriverError $ pgMsg "Could not unescape binary data, maybe format is wrong"
         Just ret -> return $ SqlBlob ret
     fromNative PS.Char x        = return $ ftext x
-    fromNative PS.Int8 x        = return $ SqlInteger $ bread "integer" x
-    fromNative PS.Int4 x        = return $ SqlInteger $ bread "integer" x
-    fromNative PS.Int2 x        = return $ SqlInteger $ bread "integer" x
+    fromNative PS.Int8 x        = return
+                                  $ SqlInteger
+                                  $ parseFromNative "Integer" (P.signed P.decimal)
+                                  $ decodeUTF8 x
+    fromNative PS.Int4 x        = return
+                                  $ SqlInteger
+                                  $ parseFromNative "Integer" (P.signed P.decimal)
+                                  $ decodeUTF8 x
+    fromNative PS.Int2 x        = return
+                                  $ SqlInteger
+                                  $ parseFromNative "Integer" (P.signed P.decimal)
+                                  $ decodeUTF8 x
     fromNative PS.Text x        = return $ ftext x
     fromNative PS.Xml  x        = return $ ftext x
-    fromNative PS.Float4 x      = return $ SqlDouble $ bread "float" x
-    fromNative PS.Float8 x      = return $ SqlDouble $ bread "float" x
+    fromNative PS.Float4 x      = return
+                                  $ SqlDouble
+                                  $ parseFromNative "Double" (P.signed P.double)
+                                  $ decodeUTF8 x
+    fromNative PS.Float8 x      = return
+                                  $ SqlDouble
+                                  $ parseFromNative "Double" (P.signed P.double)
+                                  $ decodeUTF8 x
     fromNative PS.BpChar x      = return $ ftext x
     fromNative PS.VarChar x     = return $ ftext x
-    fromNative PS.Date x        = return $ SqlLocalDate $ parseD x
-    fromNative PS.Time x        = return $ SqlLocalTimeOfDay $ parseT x
-    fromNative PS.Timestamp x   = return $ SqlLocalTime $ parseDT x
-    fromNative PS.TimestampTZ x = return $ SqlUTCTime $ parseUTC x
+    fromNative PS.Date x        = return
+                                  $ SqlLocalDate
+                                  $ parseFromNative "Date" parseIsoDay
+                                  $ decodeUTF8 x
+    fromNative PS.Time x        = return
+                                  $ SqlLocalTimeOfDay
+                                  $ parseFromNative "TimeOfDay" parseIsoTimeOfDay
+                                  $ decodeUTF8 x
+    fromNative PS.Timestamp x   = return
+                                  $ SqlLocalTime
+                                  $ parseFromNative "LocalTime" parseIsoLocalTime
+                                  $ decodeUTF8 x
+    fromNative PS.TimestampTZ x = return
+                                  $ SqlUTCTime
+                                  $ zonedTimeToUTC
+                                  $ parseFromNative "UTCTime" parseIsoZonedTime
+                                  $ decodeUTF8 x
     fromNative PS.Bit x         = return $ SqlBitField $ BitField $ parseBit x
     fromNative PS.VarBit x      = return $ SqlBitField $ BitField $ parseBit x
-    fromNative PS.Numeric x     = return $ SqlDecimal $ bread "numeric" x
+    fromNative PS.Numeric x     = return
+                                  $ SqlDecimal
+                                  $ parseFromNative "Decimal" (P.signed P.rational)
+                                  $ decodeUTF8 x
     fromNative PS.Void _        = return $ SqlNull
     fromNative PS.UUID x        = SqlUUID <$> case U.fromString uval of
       Nothing -> throwIO $ SqlDriverError $ pgMsg $ "could not read " ++ uval ++ " as UUID"
@@ -408,7 +446,7 @@ parseUTC u = parseDTString "%Y-%m-%d %H:%M:%S%Q%z" val
   where
     val = (TL.unpack $ decodeUTF8 u) ++ "00" -- strange Postgre behaviour
 
--- | parse ByteString as 64 bit field (b'00101110') and convert to Word64
+-- | parse ByteString as 64 bit field (00101110) and convert to Word64
 parseBit :: B.ByteString -> Word64
 parseBit bt = foldl makeBit 0 $ zip [0..] $ take (bitSize (undefined :: Word64)) $ reverse val
   where
@@ -531,4 +569,3 @@ doFinishStatement st = case st of
     _finish res = do
       PQ.unsafeFreeResult res
       return STFinished
-                       

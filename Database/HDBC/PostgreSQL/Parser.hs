@@ -5,6 +5,13 @@
 module Database.HDBC.PostgreSQL.Parser
        (
          buildSqlQuery
+         -- * partial parsers
+       , qidentifier
+       , quoteLiteral
+       , dollarLiteral
+       , ccomment
+       , linecomment
+       , literal
        ) where
 
 import Blaze.ByteString.Builder (toByteString)
