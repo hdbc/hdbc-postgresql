@@ -3,7 +3,7 @@ Version: 1.0.0
 License: BSD3
 Maintainer: Aleksey Uymanov <s9gf4ult@gmail.com>
 Author: John Goerzen
-Copyright: Copyright (c) 2005-2011 John Goerzen
+Copyright: Copyright (c) 2005-2013 John Goerzen
 license-file: LICENSE
 homepage: https://github.com/s9gf4ult/hdbi-postgresql
 Category: Database

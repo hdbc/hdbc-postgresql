@@ -4,6 +4,16 @@
 , OverloadedStrings
   #-}
 
+{- |
+   Module     : Database.HDBI.PostgreSQL.Implementation
+   Copyright  : Copyright (C) 2005-2013 John Goerzen
+   License    : BSD3
+
+   Maintainer : Aleksey Uymanov <s9gf4ult@gmail.com>
+   Stability  : experimental
+   Portability: portable
+-}
+
 
 module Database.HDBI.PostgreSQL.Implementation
        (
@@ -157,7 +167,7 @@ instance Connection PostgreConnection where
 
   clone conn = connectPostgreSQL $ postConnString conn
 
-  hdbcDriverName = const "postgresql"
+  hdbiDriverName = const "postgresql"
 
   dbTransactionSupport = const True
 
@@ -537,9 +547,9 @@ pgRunMany conn query values = withPGConnection conn $ \con -> do
     binq = buildSqlQuery query
     binv = map sqlValueToNative
 
--- | add "hdbc-postgresql: " before an argument
+-- | add "hdbi-postgresql: " before an argument
 pgMsg :: String -> String
-pgMsg = ("hdbc-postgresql: " ++)
+pgMsg = ("hdbi-postgresql: " ++)
 
 -- | return the name of `PGStatementState` constructor
 pgstName :: PGStatementState -> String

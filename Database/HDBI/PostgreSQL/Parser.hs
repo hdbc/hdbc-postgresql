@@ -2,6 +2,16 @@
   OverloadedStrings
   #-}
 
+{- |
+   Module     : Database.HDBI.PostgreSQL.Parser
+   Copyright  : Copyright (C) 2005-2013 John Goerzen
+   License    : BSD3
+
+   Maintainer : Aleksey Uymanov <s9gf4ult@gmail.com>
+   Stability  : experimental
+   Portability: portable
+-}
+
 module Database.HDBI.PostgreSQL.Parser
        (
          buildSqlQuery

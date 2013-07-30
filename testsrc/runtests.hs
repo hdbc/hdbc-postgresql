@@ -213,7 +213,7 @@ testG3 c = testGroup "Fixed tests"
            , testCase "inTransaction return right value" $ inTransactionStatus c
            , testCase "Connection status is good" $ connStatusGood c
            , testCase "Connection clone works" $ connClone c
-           , testCase "Check driver name" $ hdbcDriverName c @?= "postgresql"
+           , testCase "Check driver name" $ hdbiDriverName c @?= "postgresql"
            , testCase "Check transaction support" $ dbTransactionSupport c @?= True
            , testCase "Check right column names" $ checkColumnNames c
            ]
