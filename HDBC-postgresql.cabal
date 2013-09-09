@@ -16,7 +16,7 @@ Description: This package provides a PostgreSQL driver for HDBC
 Stability: Stable
 
 Build-Type: Custom
-Cabal-Version: >=1.8
+Cabal-Version: >=1.18
 
 Flag splitBase
   description: Choose the new smaller, split-up package.
