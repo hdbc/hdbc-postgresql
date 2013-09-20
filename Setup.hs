@@ -1,4 +1,5 @@
 #!/usr/bin/env runhaskell
+{-# LANGUAGE MultiParamTypeClasses, FlexibleInstances #-}
 
 import Distribution.Simple
 import Distribution.PackageDescription
@@ -26,8 +27,21 @@ main = defaultMainWithHooks simpleUserHooks {
     } 
 }
 
+-- 'ConstOrId' is a @Cabal-1.16@ vs @Cabal-1.18@ compatibility hack,
+-- 'programFindLocation' has a new (unused in this case)
+-- parameter. 'ConstOrId' adds this parameter when types say it is
+-- mandatory.
+class ConstOrId a b where
+    constOrId :: a -> b
+
+instance ConstOrId a a where
+    constOrId = id
+
+instance ConstOrId a (b -> a) where
+    constOrId = const
+
 pgconfigProgram = (simpleProgram "pgconfig or pg_config") {
-    programFindLocation = \verbosity -> do
+    programFindLocation = \verbosity -> constOrId $ do
       pgconfig  <- findProgramLocation verbosity "pgconfig"
       pg_config <- findProgramLocation verbosity "pg_config"
       return (pgconfig `mplus` pg_config)
