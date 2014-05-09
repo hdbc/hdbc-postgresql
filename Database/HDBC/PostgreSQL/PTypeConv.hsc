@@ -63,7 +63,7 @@ oidToColType oid =
       #{const PG_TYPE_INT2} -> SqlSmallIntT
       #{const PG_TYPE_OID} -> SqlIntegerT
       #{const PG_TYPE_XID} -> SqlIntegerT
-      #{const PG_TYPE_INT4} -> SqlBigIntT
+      #{const PG_TYPE_INT4} -> SqlIntegerT
       #{const PG_TYPE_INT8} -> SqlBigIntT
       #{const PG_TYPE_NUMERIC} -> SqlNumericT
       #{const PG_TYPE_FLOAT4} -> SqlRealT
