@@ -22,7 +22,13 @@ import Database.HDBC.PostgreSQL.Parser(convertSQL)
 import Database.HDBC.DriverUtils
 import Database.HDBC.PostgreSQL.PTypeConv
 import Data.Time.Format
+
+#if MIN_VERSION_time(1,5,0)
+import System.Locale hiding (defaultTimeLocale)
+#else
 import System.Locale
+#endif
+
 
 l :: Monad m => t -> m ()
 l _ = return ()
