@@ -57,7 +57,7 @@ Executable runtests
       Buildable: True
       Build-Depends: HUnit, QuickCheck, testpack, containers,
                      convertible, time, old-locale, parsec, utf8-string,
-                     bytestring, old-time, base, HDBC>=2.2.6
+                     bytestring, old-time, base >= 4.6 && < 4.9, HDBC>=2.2.6
    else
       Buildable: False
    Main-Is: runtests.hs
