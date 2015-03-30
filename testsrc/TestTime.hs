@@ -36,6 +36,7 @@ testDTType :: (Convertible SqlValue a, Show b, Eq b) =>
     -> Test
 testDTType inputdata convToSqlValue toComparable = dbTestCase $ \dbh ->
     do run dbh ("CREATE TABLE hdbctesttime (testid INTEGER PRIMARY KEY NOT NULL, testvalue " ++ dateTimeTypeOfSqlValue value ++ ")") []
+       commit dbh
        finally (testIt dbh) (do commit dbh
                                 run dbh "DROP TABLE hdbctesttime" []
                                 commit dbh
