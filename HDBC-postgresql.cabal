@@ -1,5 +1,5 @@
 Name: HDBC-postgresql
-Version: 2.3.2.2
+Version: 2.3.2.3
 License: BSD3
 Maintainer: Nicolas Wu <nicolas.wu@gmail.com>
 Author: John Goerzen
@@ -9,6 +9,7 @@ extra-source-files: LICENSE, hdbc-postgresql-helper.h, pgtypes.h,
                     Makefile,
                     README.txt,
                     testsrc/TestTime.hs
+                    CHANGELOG.md
 homepage: http://github.com/hdbc/hdbc-postgresql
 Category: Database
 synopsis: PostgreSQL driver for HDBC
