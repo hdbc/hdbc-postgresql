@@ -23,6 +23,9 @@ Flag splitBase
 Flag buildtests
   description: Build the executable to run unit tests
   default: False
+Flag minTime15
+  description: Use time 1.5 or higher.
+  default: True
 
 Library
   Exposed-Modules: Database.HDBC.PostgreSQL
@@ -36,7 +39,12 @@ Library
     Database.HDBC.PostgreSQL.ErrorCodes
   Extensions: ExistentialQuantification, ForeignFunctionInterface
   Build-Depends: base >= 3 && < 5, mtl, HDBC>=2.2.0, parsec, utf8-string,
-                 bytestring, old-time, old-locale, time, convertible
+                 bytestring, old-time, convertible
+  if flag(minTime15)
+    Build-Depends: time >= 1.5 && < 1.6
+    CPP-Options: -DMIN_TIME_15
+  else
+    Build-Depends: time < 1.5, old-locale
   if impl(ghc >= 6.9)
     Build-Depends: base >= 4
   Extra-Libraries: pq

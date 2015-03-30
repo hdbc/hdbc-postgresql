@@ -22,7 +22,9 @@ import Database.HDBC.PostgreSQL.Parser(convertSQL)
 import Database.HDBC.DriverUtils
 import Database.HDBC.PostgreSQL.PTypeConv
 import Data.Time.Format
+#ifndef MIN_TIME_15
 import System.Locale
+#endif
 
 l :: Monad m => t -> m ()
 l _ = return ()
@@ -333,8 +335,8 @@ makeSqlValue sqltypeid bstrval =
             tid == SqlUTCTimeT   -> return $ SqlLocalTimeOfDay (fromSql (toSql strval))
 
       tid | tid == SqlTimeWithZoneT ->
-              (let (a, b) = case (parseTime defaultTimeLocale "%T%Q %z" timestr,
-                                  parseTime defaultTimeLocale "%T%Q %z" timestr) of
+              (let (a, b) = case (parseTime' defaultTimeLocale "%T%Q %z" timestr,
+                                  parseTime' defaultTimeLocale "%T%Q %z" timestr) of
                                 (Just x, Just y) -> (x, y)
                                 x -> error $ "PostgreSQL Statement.hsc: Couldn't parse " ++ strval ++ " as SqlZonedLocalTimeOfDay: " ++ show x
                    timestr = fixString strval
@@ -383,3 +385,10 @@ makeRationalFromDecimal s =
 split :: Char -> String -> [String]
 split delim inp =
     lines . map (\x -> if x == delim then '\n' else x) $ inp
+
+parseTime' :: ParseTime t => TimeLocale -> String -> String -> Maybe t
+#if MIN_TIME_15
+parseTime' = parseTimeM True
+#else
+parseTime' = parseTime
+#endif
