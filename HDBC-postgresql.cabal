@@ -56,8 +56,13 @@ Executable runtests
    if flag(buildtests)
       Buildable: True
       Build-Depends: HUnit, QuickCheck, testpack, containers,
-                     convertible, time, old-locale, parsec, utf8-string,
+                     convertible, parsec, utf8-string,
                      bytestring, old-time, base >= 4.6 && < 4.9, HDBC>=2.2.6
+      if flag(minTime15)
+        Build-Depends: time >= 1.5 && < 1.6
+        CPP-Options: -DMIN_TIME_15
+      else
+        Build-Depends: time < 1.5, old-locale
    else
       Buildable: False
    Main-Is: runtests.hs

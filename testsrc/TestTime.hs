@@ -1,17 +1,22 @@
-{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleContexts, CPP #-}
 
 module TestTime(tests) where
 import Test.HUnit
 import Database.HDBC
 import TestUtils
 import Control.Exception
-import Data.Time
+import Data.Time (UTCTime, Day, NominalDiffTime)
 import Data.Time.LocalTime
 import Data.Time.Clock.POSIX
 import Data.Maybe
 import Data.Convertible
 import SpecificDB
+#ifdef MIN_TIME_15
+import Data.Time (parseTimeM, defaultTimeLocale)
+#else
+import Data.Time (parseTime)
 import System.Locale(defaultTimeLocale)
+#endif
 import Database.HDBC.Locale (iso8601DateFormat)
 import qualified System.Time as ST
 
@@ -19,11 +24,11 @@ instance Eq ZonedTime where
     a == b = zonedTimeToUTC a == zonedTimeToUTC b
 
 testZonedTime :: ZonedTime
-testZonedTime = fromJust $ parseTime defaultTimeLocale (iso8601DateFormat (Just "%T %z"))
+testZonedTime = fromJust $ parseTime' defaultTimeLocale (iso8601DateFormat (Just "%T %z"))
                  "1989-08-01 15:33:01 -0500"
 
 testZonedTimeFrac :: ZonedTime
-testZonedTimeFrac = fromJust $ parseTime defaultTimeLocale (iso8601DateFormat (Just "%T%Q %z"))
+testZonedTimeFrac = fromJust $ parseTime' defaultTimeLocale (iso8601DateFormat (Just "%T%Q %z"))
                     "1989-08-01 15:33:01.536 -0500"
 
 
@@ -106,3 +111,9 @@ testIt baseZonedTime =
 
       baseCalendarTime :: ST.CalendarTime
       baseCalendarTime = convert testZonedTime
+
+#if MIN_TIME_15
+parseTime' = parseTimeM True
+#else
+parseTime' = parseTime
+#endif
