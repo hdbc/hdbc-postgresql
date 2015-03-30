@@ -4,7 +4,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 
 module Database.HDBC.PostgreSQL.Connection
-	(connectPostgreSQL, withPostgreSQL,
+        (connectPostgreSQL, withPostgreSQL,
          connectPostgreSQL', withPostgreSQL',
          Impl.begin, Impl.Connection())
  where
