@@ -31,14 +31,17 @@ main = defaultMainWithHooks simpleUserHooks {
 -- 'programFindLocation' has a new (unused in this case)
 -- parameter. 'ConstOrId' adds this parameter when types say it is
 -- mandatory.
-class ConstOrId a b where
+class FindProgramLocation a b where
     constOrId :: a -> b
 
-instance ConstOrId a a where
+instance FindProgramLocation (IO (Maybe FilePath)) (IO (Maybe FilePath)) where
     constOrId = id
 
-instance ConstOrId a (b -> a) where
+instance FindProgramLocation (IO (Maybe FilePath)) (ProgramSearchPath -> IO (Maybe FilePath)) where
     constOrId = const
+
+instance FindProgramLocation (IO (Maybe FilePath)) (ProgramSearchPath -> IO (Maybe (FilePath, [FilePath]))) where
+    constOrId x = liftM (fmap (\x -> (x, []))) . const x
 
 pgconfigProgram = (simpleProgram "pgconfig or pg_config") {
     programFindLocation = \verbosity -> constOrId $ do
