@@ -11,6 +11,7 @@ import Distribution.Verbosity
 
 import Data.Char (isSpace)
 import Data.List (dropWhile,reverse)
+import Data.String (fromString)
 
 import Control.Monad
 
@@ -23,7 +24,7 @@ main = defaultMainWithHooks simpleUserHooks {
     
     return lbi {
       localPkgDescr = updatePackageDescription
-                        (Just bi, [("runtests", bi)]) (localPkgDescr lbi)
+                        (Just bi, [(fromString "runtests", bi)]) (localPkgDescr lbi)
     } 
 }
 
