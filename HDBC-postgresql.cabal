@@ -5,7 +5,8 @@ Maintainer: Nicolas Wu <nicolas.wu@gmail.com>
 Author: John Goerzen
 Copyright: Copyright (c) 2005-2011 John Goerzen
 license-file: LICENSE
-extra-source-files: LICENSE, hdbc-postgresql-helper.h, pgtypes.h,
+extra-source-files: LICENSE, hdbc-postgresql-helper.h,
+                    pgtypes_internal.h
                     Makefile,
                     README.txt,
                     testsrc/TestTime.hs

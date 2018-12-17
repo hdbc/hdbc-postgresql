@@ -3,7 +3,7 @@ module Database.HDBC.PostgreSQL.PTypeConv where
 import Database.HDBC.ColTypes
 import Data.Word
 
-#include "pgtypes.h"
+#include "pgtypes_internal.h"
 #include <libpq-fe.h>
 
 
