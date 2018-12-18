@@ -1,5 +1,9 @@
 # Changelog
 
+### 2.3.2.6
+
+* Fix postgresql header name collision
+
 #### 2.3.2.5
 
 * Compatibility with time 1.8, GHC 8.2.
