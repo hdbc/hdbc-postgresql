@@ -45,9 +45,9 @@ instance FindProgramLocation (IO (Maybe FilePath)) (ProgramSearchPath -> IO (May
     constOrId x = liftM (fmap (\x -> (x, []))) . const x
 
 pgconfigProgram = (simpleProgram "pgconfig or pg_config") {
-    programFindLocation = \verbosity -> constOrId $ do
-      pgconfig  <- findProgramOnSearchPath verbosity [ProgramSearchPathDefault] "pgconfig"
-      pg_config <- findProgramOnSearchPath verbosity [ProgramSearchPathDefault] "pg_config"
+    programFindLocation = \verbosity searchPath -> constOrId $ do
+      pgconfig  <- findProgramOnSearchPath verbosity searchPath "pgconfig"
+      pg_config <- findProgramOnSearchPath verbosity searchPath "pg_config"
       return (pgconfig `mplus` pg_config)
   }
 
