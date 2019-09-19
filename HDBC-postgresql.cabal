@@ -43,7 +43,7 @@ Library
   Build-Depends: base >= 3 && < 5, mtl, HDBC>=2.2.0, parsec, utf8-string,
                  bytestring, old-time, convertible
   if flag(minTime15)
-    Build-Depends: time >= 1.5 && < 1.9
+    Build-Depends: time >= 1.5 && < 1.10
     CPP-Options: -DMIN_TIME_15
   else
     Build-Depends: time < 1.5, old-locale
