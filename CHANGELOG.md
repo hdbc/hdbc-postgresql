@@ -1,5 +1,10 @@
 # Changelog
 
+### 2.3.2.7
+
+* Compatibility with time 1.9 & GHC 8.8
+* Custom setup for cabal v2 & v3
+
 ### 2.3.2.6
 
 * Fix postgresql header name collision
