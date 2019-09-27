@@ -45,9 +45,9 @@ instance FindProgramLocation (IO (Maybe FilePath)) (ProgramSearchPath -> IO (May
     constOrId x = liftM (fmap (\x -> (x, []))) . const x
 
 pgconfigProgram = (simpleProgram "pgconfig or pg_config") {
-    programFindLocation = \verbosity -> constOrId $ do
-      pgconfig  <- findProgramLocation verbosity "pgconfig"
-      pg_config <- findProgramLocation verbosity "pg_config"
+    programFindLocation = \verbosity searchPath -> do
+      pgconfig  <- findProgramOnSearchPath verbosity searchPath "pgconfig"
+      pg_config <- findProgramOnSearchPath verbosity searchPath "pg_config"
       return (pgconfig `mplus` pg_config)
   }
 
@@ -55,7 +55,7 @@ psqlBuildInfo :: LocalBuildInfo -> IO BuildInfo
 psqlBuildInfo lbi = do
   (pgconfigProg, _) <- requireProgram verbosity
                          pgconfigProgram (withPrograms lbi)
-  let pgconfig = rawSystemProgramStdout verbosity pgconfigProg
+  let pgconfig = getProgramOutput verbosity pgconfigProg
 
   incDir <- pgconfig ["--includedir"]
   libDir <- pgconfig ["--libdir"]
