@@ -5,10 +5,10 @@ Maintainer: Nicolas Wu <nicolas.wu@gmail.com>
 Author: John Goerzen
 Copyright: Copyright (c) 2005-2011 John Goerzen
 license-file: LICENSE
-extra-source-files: LICENSE, hdbc-postgresql-helper.h,
+extra-source-files: LICENSE
                     pgtypes_internal.h
-                    Makefile,
-                    README.txt,
+                    Makefile
+                    README.txt
                     testsrc/TestTime.hs
                     CHANGELOG.md
 homepage: http://github.com/hdbc/hdbc-postgresql
@@ -53,7 +53,6 @@ Library
   if impl(ghc >= 6.9)
     Build-Depends: base >= 4
   Extra-Libraries: pq
-  C-Sources: hdbc-postgresql-helper.c
   Include-Dirs: .
   GHC-Options: -O2 -Wall
 
@@ -86,11 +85,10 @@ Executable runtests
                   TestUtils,
                   Testbasics,
                   Tests
-   C-Sources: hdbc-postgresql-helper.c
    include-dirs: .
    Extra-Libraries: pq
    Hs-Source-Dirs: ., testsrc
-   GHC-Options: -O2
+   GHC-Options: -O2 -threaded
    Extensions: ExistentialQuantification,
                ForeignFunctionInterface
 

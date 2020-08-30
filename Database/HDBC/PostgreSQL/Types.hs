@@ -7,11 +7,9 @@ import Control.Concurrent.MVar
 type ConnLock = MVar ()
 
 data CConn = CConn
-type WrappedCConn = Ptr CConn
-type Conn = (ConnLock, ForeignPtr WrappedCConn)
+type Conn = (ConnLock, ForeignPtr CConn)
 
 data CStmt = CStmt
-type WrappedCStmt = Ptr CStmt
-type Stmt = ForeignPtr WrappedCStmt
+type Stmt = ForeignPtr CStmt
 type ResultStatus = Word32
 
