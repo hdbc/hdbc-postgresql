@@ -18,7 +18,7 @@ Description: This package provides a PostgreSQL driver for HDBC
 Stability: Stable
 
 Build-Type: Custom
-Cabal-Version: >=1.8
+Cabal-Version: >=1.10
 
 custom-setup
   setup-depends: Cabal >= 1.8 && < 3.3, base < 5
@@ -42,7 +42,6 @@ Library
     Database.HDBC.PostgreSQL.Parser,
     Database.HDBC.PostgreSQL.PTypeConv,
     Database.HDBC.PostgreSQL.ErrorCodes
-  Extensions: ExistentialQuantification, ForeignFunctionInterface
   Build-Depends: base >= 3 && < 5, mtl, HDBC>=2.2.0, parsec, utf8-string,
                  bytestring, old-time, convertible
   if flag(minTime15)
@@ -56,6 +55,7 @@ Library
   C-Sources: hdbc-postgresql-helper.c
   Include-Dirs: .
   GHC-Options: -O2 -Wall
+  Default-Language: Haskell2010
 
 Executable runtests
    if flag(buildtests)
@@ -91,8 +91,7 @@ Executable runtests
    Extra-Libraries: pq
    Hs-Source-Dirs: ., testsrc
    GHC-Options: -O2
-   Extensions: ExistentialQuantification,
-               ForeignFunctionInterface
+   Default-Language: Haskell2010
 
 source-repository head
   type:     git
