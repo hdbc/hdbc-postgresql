@@ -1,5 +1,9 @@
 # Changelog
 
+### 2.3.2.8
+
+* Compatiblity with Cabal 3.2
+
 ### 2.3.2.7
 
 * Compatibility with time 1.9 & GHC 8.8
