@@ -21,7 +21,7 @@ Build-Type: Custom
 Cabal-Version: >=1.8
 
 custom-setup
-  setup-depends: Cabal >= 1.8 && < 3.1, base < 5
+  setup-depends: Cabal >= 1.8 && < 3.3, base < 5
 
 Flag splitBase
   description: Choose the new smaller, split-up package.
