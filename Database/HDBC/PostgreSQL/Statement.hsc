@@ -1,8 +1,5 @@
--- -*- mode: haskell; -*-
-{-# CFILES hdbc-postgresql-helper.c #-}
--- Above line for hugs
-
 module Database.HDBC.PostgreSQL.Statement where
+
 import Database.HDBC.Types
 import Database.HDBC
 import Database.HDBC.PostgreSQL.Types
@@ -103,7 +100,7 @@ fexecuteRaw sstate =
                _ <- handleResultStatus cconn resptr sstate =<< pqresultStatus resptr :: IO Int
                return ()
 
-handleResultStatus :: (Num a, Read a) => Ptr CConn -> WrappedCStmt -> SState -> ResultStatus -> IO a
+handleResultStatus :: (Num a, Read a) => Ptr CConn -> Ptr CStmt -> SState -> ResultStatus -> IO a
 handleResultStatus cconn resptr sstate status =
     case status of
       #{const PGRES_EMPTY_QUERY} ->
@@ -126,9 +123,7 @@ handleResultStatus cconn resptr sstate status =
              numrows <- pqntuples resptr
              if numrows < 1 then (pqclear_raw resptr >> return 0) else
                  do
-                   wrappedptr <- withRawConn (dbo sstate)
-                                 (\rawconn -> wrapstmt resptr rawconn)
-                   fresptr <- newForeignPtr pqclearptr wrappedptr
+                   fresptr <- newForeignPtr pqclearptr resptr
                    _ <- swapMVar (nextrowmv sstate) 0
                    _ <- swapMVar (stomv sstate) (Just fresptr)
                    return 0
@@ -224,7 +219,7 @@ public_ffinish sstate =
           worker (Just sth) = ffinish sth >> return Nothing
 
 ffinish :: Stmt -> IO ()
-ffinish p = withRawStmt p $ pqclear
+ffinish _ = pure ()
 
 foreign import ccall unsafe "libpq-fe.h PQresultStatus"
   pqresultStatus :: (Ptr CStmt) -> IO #{type ExecStatusType}
@@ -241,17 +236,11 @@ foreign import ccall safe "libpq-fe.h PQexecParams"
 foreign import ccall safe "libpq-fe.h PQexec"
   pqexec :: (Ptr CConn) -> CString -> IO (Ptr CStmt)
 
-foreign import ccall unsafe "hdbc-postgresql-helper.h PQclear_app"
-  pqclear :: Ptr WrappedCStmt -> IO ()
-
-foreign import ccall unsafe "hdbc-postgresql-helper.h &PQclear_finalizer"
-  pqclearptr :: FunPtr (Ptr WrappedCStmt -> IO ())
+foreign import ccall unsafe "libpq-fe.h &PQclear"
+  pqclearptr :: FunPtr (Ptr CStmt -> IO ())
 
 foreign import ccall unsafe "libpq-fe.h PQclear"
   pqclear_raw :: Ptr CStmt -> IO ()
-
-foreign import ccall unsafe "hdbc-postgresql-helper.h wrapobjpg"
-  wrapstmt :: Ptr CStmt -> Ptr WrappedCConn -> IO (Ptr WrappedCStmt)
 
 foreign import ccall unsafe "libpq-fe.h PQcmdTuples"
   pqcmdTuples :: Ptr CStmt -> IO CString

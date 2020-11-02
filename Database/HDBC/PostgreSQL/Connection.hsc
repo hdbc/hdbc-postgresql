@@ -1,5 +1,4 @@
 -- -*- mode: haskell; -*-
-{-# CFILES hdbc-postgresql-helper.c #-}
 -- Above line for hugs
 {-# LANGUAGE FlexibleContexts #-}
 
@@ -28,7 +27,7 @@ import Control.Monad (when)
 import Control.Concurrent.MVar
 import System.IO (stderr, hPutStrLn)
 import System.IO.Unsafe (unsafePerformIO)
-import Control.Exception(bracket) 
+import Control.Exception(bracket)
 import Data.Convertible (Convertible)
 
 #include <libpq-fe.h>
@@ -64,8 +63,7 @@ connectPostgreSQL_helper auto_transaction args =
                                   return globalConnLock
                           else newMVar ()
             status <- pqstatus ptr
-            wrappedptr <- wrapconn ptr nullPtr
-            fptr <- newForeignPtr pqfinishptr wrappedptr
+            fptr <- newForeignPtr pqfinish ptr
             case status of
                      #{const CONNECTION_OK} -> mkConn auto_transaction args (connLock,fptr)
                      _ -> raiseError "connectPostgreSQL" status ptr
@@ -74,14 +72,14 @@ connectPostgreSQL_helper auto_transaction args =
 -- for clone.
 mkConn :: Bool -> String -> Conn -> IO Impl.Connection
 mkConn auto_transaction args conn = withConn conn $
-  \cconn -> 
+  \cconn ->
     do children <- newMVar []
        when auto_transaction $ begin_transaction conn children
        protover <- pqprotocolVersion cconn
        serverver <- pqserverVersion cconn
        let clientver = #{const_str PG_VERSION}
        let rconn = Impl.Connection {
-                            Impl.disconnect = fdisconnect conn children,
+                            Impl.disconnect = fdisconnect children,
                             Impl.begin = if auto_transaction
                                          then return ()
                                          else begin_transaction conn children,
@@ -141,7 +139,7 @@ frollback begin o cl =  do _ <- frun o cl "ROLLBACK" []
 
 fgetTables :: (Convertible SqlValue a) => Conn -> ChildList -> IO [a]
 fgetTables conn children =
-    do sth <- newSth conn children 
+    do sth <- newSth conn children
               "select table_name from information_schema.tables where \
                \table_schema != 'pg_catalog' AND table_schema != \
                \'information_schema'"
@@ -155,7 +153,7 @@ fdescribeTable o cl table = fdescribeSchemaTable o cl Nothing table
 
 fdescribeSchemaTable :: Conn -> ChildList -> Maybe String -> String -> IO [(String, SqlColDesc)]
 fdescribeSchemaTable o cl maybeSchema table =
-    do sth <- newSth o cl 
+    do sth <- newSth o cl
               ("SELECT attname, atttypid, attlen, format_type(atttypid, atttypmod), attnotnull " ++
                "FROM pg_attribute, pg_class, pg_namespace ns " ++
                "WHERE relname = ? and attnum > 0 and attisdropped IS FALSE " ++
@@ -167,37 +165,28 @@ fdescribeSchemaTable o cl maybeSchema table =
        return $ map desccol res
     where
       desccol [attname, atttypid, attlen, formattedtype, attnotnull] =
-          (fromSql attname, 
+          (fromSql attname,
            colDescForPGAttr (fromSql atttypid) (fromSql attlen) (fromSql formattedtype) (fromSql attnotnull == False))
       desccol x =
           error $ "Got unexpected result from pg_attribute: " ++ show x
-         
 
-fdisconnect :: Conn -> ChildList -> IO ()
-fdisconnect conn mchildren = 
-    do closeAllChildren mchildren
-       withRawConn conn $ pqfinish
+fdisconnect :: ChildList -> IO ()
+fdisconnect = closeAllChildren
 
 foreign import ccall safe "libpq-fe.h PQconnectdb"
   pqconnectdb :: CString -> IO (Ptr CConn)
 
-foreign import ccall unsafe "hdbc-postgresql-helper.h wrapobjpg"
-  wrapconn :: Ptr CConn -> Ptr WrappedCConn -> IO (Ptr WrappedCConn)
-
-foreign import ccall unsafe "libpq-fe.h PQstatus"
+foreign import ccall safe "libpq-fe.h PQstatus"
   pqstatus :: Ptr CConn -> IO #{type ConnStatusType}
 
-foreign import ccall unsafe "hdbc-postgresql-helper.h PQfinish_app"
-  pqfinish :: Ptr WrappedCConn -> IO ()
+foreign import ccall safe "libpq-fe.h &PQfinish"
+  pqfinish :: FunPtr (Ptr CConn -> IO ())
 
-foreign import ccall unsafe "hdbc-postgresql-helper.h &PQfinish_finalizer"
-  pqfinishptr :: FunPtr (Ptr WrappedCConn -> IO ())
-
-foreign import ccall unsafe "libpq-fe.h PQprotocolVersion"
+foreign import ccall safe "libpq-fe.h PQprotocolVersion"
   pqprotocolVersion :: Ptr CConn -> IO CInt
 
-foreign import ccall unsafe "libpq-fe.h PQserverVersion"
+foreign import ccall safe "libpq-fe.h PQserverVersion"
   pqserverVersion :: Ptr CConn -> IO CInt
 
-foreign import ccall unsafe "libpq.fe.h PQisthreadsafe"
+foreign import ccall safe "libpq.fe.h PQisthreadsafe"
   pqisThreadSafe :: Ptr CConn -> IO Int

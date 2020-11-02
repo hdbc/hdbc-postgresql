@@ -1,7 +1,5 @@
-{- -*- mode: haskell; -*- 
--}
-
 module Database.HDBC.PostgreSQL.Utils where
+
 import Foreign.C.String
 import Foreign.ForeignPtr
 import Foreign.Ptr
@@ -24,8 +22,6 @@ import qualified Data.ByteString.Char8 as BCHAR8
 import qualified Data.ByteString.Unsafe as B
 #endif
 
-#include "hdbc-postgresql-helper.h"
-
 raiseError :: String -> Word32 -> (Ptr CConn) -> IO a
 raiseError msg code cconn =
     do rc <- pqerrorMessage cconn
@@ -47,30 +43,30 @@ done by withRawConn.
 Ditto for statements. -}
 
 withConn :: Conn -> (Ptr CConn -> IO b) -> IO b
-withConn (_lock,conn) = genericUnwrap conn
+withConn (_lock,conn) = withForeignPtr conn
 
 -- Perform the associated action with the connection lock held.
 -- Care must be taken with the use of this as it is *not* re-entrant.  Calling it
--- a second time in the same thread will cause dead-lock. 
+-- a second time in the same thread will cause dead-lock.
 -- (A better approach would be to use RLock from concurrent-extra)
 withConnLocked :: Conn -> (Ptr CConn -> IO b) -> IO b
 withConnLocked c@(lock,_) a = withConn c (\cconn -> withMVar lock (\_ -> a cconn))
 
-withRawConn :: Conn -> (Ptr WrappedCConn -> IO b) -> IO b
+withRawConn :: Conn -> (Ptr CConn -> IO b) -> IO b
 withRawConn (_lock,conn) = withForeignPtr conn
 
 withStmt :: Stmt -> (Ptr CStmt -> IO b) -> IO b
-withStmt = genericUnwrap
+withStmt = withForeignPtr
 
-withRawStmt :: Stmt -> (Ptr WrappedCStmt -> IO b) -> IO b
+withRawStmt :: Stmt -> (Ptr CStmt -> IO b) -> IO b
 withRawStmt = withForeignPtr
 
 withCStringArr0 :: [SqlValue] -> (Ptr CString -> IO a) -> IO a
 withCStringArr0 inp action = withAnyArr0 convfunc freefunc inp action
     where convfunc SqlNull = return nullPtr
 {-
-          convfunc y@(SqlZonedTime _) = convfunc (SqlString $ 
-                                                "TIMESTAMP WITH TIME ZONE '" ++ 
+          convfunc y@(SqlZonedTime _) = convfunc (SqlString $
+                                                "TIMESTAMP WITH TIME ZONE '" ++
                                                 fromSql y ++ "'")
 -}
           convfunc y@(SqlUTCTime _) = convfunc (SqlZonedTime (fromSql y))
@@ -110,12 +106,5 @@ cstrUtf8BString bs = do
         -- return ptr
         return res
 
-genericUnwrap :: ForeignPtr (Ptr a) -> (Ptr a -> IO b) -> IO b
-genericUnwrap fptr action = withForeignPtr fptr (\structptr ->
-    do objptr <- #{peek finalizeonce, encapobj} structptr
-       action objptr
-                                                )
-          
 foreign import ccall unsafe "libpq-fe.h PQerrorMessage"
   pqerrorMessage :: Ptr CConn -> IO CString
-
