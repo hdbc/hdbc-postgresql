@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.4.0.0
+
+* Remove custom reference counting logic. Thanks to David Johnson.
+
 ### 2.3.2.8
 
 * Compatiblity with Cabal 3.2
