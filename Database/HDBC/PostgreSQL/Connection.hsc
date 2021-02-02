@@ -79,7 +79,7 @@ mkConn auto_transaction args conn = withConn conn $
        serverver <- pqserverVersion cconn
        let clientver = #{const_str PG_VERSION}
        let rconn = Impl.Connection {
-                            Impl.disconnect = fdisconnect children,
+                            Impl.disconnect = fdisconnect conn children,
                             Impl.begin = if auto_transaction
                                          then return ()
                                          else begin_transaction conn children,
@@ -170,8 +170,11 @@ fdescribeSchemaTable o cl maybeSchema table =
       desccol x =
           error $ "Got unexpected result from pg_attribute: " ++ show x
 
-fdisconnect :: ChildList -> IO ()
-fdisconnect = closeAllChildren
+fdisconnect :: Conn -> ChildList -> IO ()
+fdisconnect (lock, fptr) childList = do
+  closeAllChildren childList
+  modifyMVar_ lock $ \_ ->
+    finalizeForeignPtr fptr
 
 foreign import ccall safe "libpq-fe.h PQconnectdb"
   pqconnectdb :: CString -> IO (Ptr CConn)
