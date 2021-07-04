@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+* The library now uses the UTC timezone for new sessions. A user of the library must set a timezone manually if they want to use a different one.
+
 ## 2.5.0.0
 
 * Add explicit call to `finalizeForeignPtr` on connection disconnects. Ensures disconnects happen at the moment close is call, as opposed to when the GC frees the ForeignPtr.
