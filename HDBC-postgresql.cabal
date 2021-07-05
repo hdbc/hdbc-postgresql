@@ -59,7 +59,7 @@ Library
 Executable runtests
    if flag(buildtests)
       Buildable: True
-      Build-Depends: HUnit, QuickCheck, testpack, containers,
+      Build-Depends: HUnit, QuickCheck, containers,
                      convertible, parsec, utf8-string,
                      bytestring, old-time, base >= 4.6 && < 5.0, HDBC>=2.2.6
       if flag(minTime15)
