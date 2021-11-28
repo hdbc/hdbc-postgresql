@@ -5,7 +5,7 @@ import Test.HUnit
 import Database.HDBC
 import TestUtils
 import Control.Exception
-import Data.Time (UTCTime, Day, NominalDiffTime)
+import Data.Time (UTCTime(..), Day, NominalDiffTime, fromGregorian)
 import Data.Time.LocalTime
 import Data.Time.Clock.POSIX
 import Data.Maybe
@@ -78,6 +78,24 @@ testIt baseZonedTime =
            , mkTest "ClockTime"      baseClockTime      toSql      id
            , mkTest "CalendarTime"   baseCalendarTime   toSql      ST.toClockTime
            , mkTest "TimeDiff"       baseTimeDiff       toSql      id
+           , TestLabel "Avoids timezone offset with second granularity" $
+               dbTestCase $ \dbh -> do
+                 -- This test verifies that we set the timezone to UTC. Had we
+                 -- not, it would fail on systems with a configured timezone
+                 -- like the following.  Uncomment (in case your system uses
+                 -- e.g. UTC) the line and you'll see the parsing error:
+                 --run dbh "SET timezone TO 'America/Chicago';" []
+                 -- On November 18, 1883, precisely at noon, North American
+                 -- railroads switched to a new standard time system for rail
+                 -- operations.  But this timestamp is before noon, and it had
+                 -- a weird offset in tzdb-2021a. The `time` dependency doesn't
+                 -- support timezone offsets with second granularity:
+                 -- https://stackoverflow.com/a/68158939/309483
+                 r <- quickQuery' dbh "SELECT '1883-11-18' :: timestamptz;" []
+                 case r of
+                   [[x]] ->
+                     assertEqual "night before railroad switchover matches"
+                                 (fromSql x) (UTCTime (fromGregorian 1883 11 18) 0)
            ]
  where
       baseDay :: Day
