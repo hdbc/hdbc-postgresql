@@ -1,6 +1,8 @@
 module TestSbasics(tests) where
 import Test.HUnit
+import Data.Convertible (convert)
 import Data.List
+import Data.Time (UTCTime(UTCTime), fromGregorian)
 import Database.HDBC
 import TestUtils
 import System.IO
@@ -153,6 +155,16 @@ testWithTransaction = dbTestCase (\dbh ->
                                )
     where rows = map (\x -> [Just . show $ x]) [1..9]
        
+testFirstCentury = dbTestCase $ \dbh ->
+  do -- we use UTC to avoid Local Mean Time which the 'time' library can't handle
+     runRaw dbh "SET TIMEZONE TO 'UTC';"
+     select <- prepare dbh "SELECT ? :: timestamptz;"
+     let time = UTCTime (fromGregorian 99 12 25) 0
+     execute select [toSql (convert time :: SqlValue)]
+     result <- fetchAllRows select
+     assertEqual "first century year can roundtrip"
+                 time (fromSql $ head $ head result)
+
 tests = TestList
         [
          TestLabel "openClosedb" openClosedb,
@@ -167,5 +179,6 @@ tests = TestList
          TestLabel "sFetchAllRows" testsFetchAllRows,
          TestLabel "basicTransactions" basicTransactions,
          TestLabel "withTransaction" testWithTransaction,
-         TestLabel "dropTable" dropTable
+         TestLabel "dropTable" dropTable,
+         TestLabel "firstCentury" testFirstCentury
          ]
