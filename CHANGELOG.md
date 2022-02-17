@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.5.0.1
+
+* Bump time upper bound to 1.14, add round-trip test for 0-padded date.
+
 ## 2.5.0.0
 
 * Add explicit call to `finalizeForeignPtr` on connection disconnects. Ensures disconnects happen at the moment close is call, as opposed to when the GC frees the ForeignPtr.
