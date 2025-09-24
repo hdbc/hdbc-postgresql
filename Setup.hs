@@ -1,5 +1,5 @@
 #!/usr/bin/env runhaskell
-{-# LANGUAGE MultiParamTypeClasses, FlexibleInstances #-}
+{-# LANGUAGE CPP, MultiParamTypeClasses, FlexibleInstances #-}
 
 import Distribution.Simple
 import Distribution.PackageDescription
@@ -8,6 +8,9 @@ import Distribution.Version
 import Distribution.Simple.LocalBuildInfo
 import Distribution.Simple.Program
 import Distribution.Verbosity
+#if MIN_VERSION_Cabal(3,14,0)
+import Distribution.Utils.Path
+#endif
 
 import Data.Char (isSpace)
 import Data.List (dropWhile,reverse)
@@ -61,9 +64,14 @@ psqlBuildInfo lbi = do
   libDir <- pgconfig ["--libdir"]
 
   return emptyBuildInfo {
-    extraLibDirs = [strip libDir],
-    includeDirs  = [strip incDir]
+    extraLibDirs = [toPath $ strip libDir],
+    includeDirs  = [toPath $ strip incDir]
   }
   where
+#if MIN_VERSION_Cabal(3,14,0)
+    toPath = makeSymbolicPath
+#else
+    toPath = id
+#endif
     verbosity = normal -- honestly, this is a hack
     strip x = dropWhile isSpace $ reverse $ dropWhile isSpace $ reverse x
