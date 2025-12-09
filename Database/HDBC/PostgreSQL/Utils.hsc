@@ -13,6 +13,7 @@ import Foreign.Storable
 import Foreign.Marshal.Array
 import Foreign.Marshal.Alloc
 import Foreign.Marshal.Utils
+import Data.Fixed (Pico, showFixed)
 import Data.Word
 import qualified Data.ByteString.UTF8 as BUTF8
 import qualified Data.ByteString as B
@@ -72,11 +73,18 @@ withCStringArr0 inp action = withAnyArr0 convfunc freefunc inp action
           convfunc y@(SqlUTCTime _) = convfunc (SqlZonedTime (fromSql y))
           convfunc y@(SqlEpochTime _) = convfunc (SqlZonedTime (fromSql y))
           convfunc (SqlByteString x) = cstrUtf8BString (cleanUpBSNulls x)
+          convfunc (SqlRational rat) = cstrUtf8BString (showRational rat)
           convfunc x = cstrUtf8BString (fromSql x)
           freefunc x =
               if x == nullPtr
                  then return ()
                  else free x
+
+
+{- | Helper that formats a 'Rational' using decimal. -}
+showRational :: Rational -> B.ByteString
+showRational rat = BCHAR8.pack $ showFixed True (fromRational rat :: Pico)
+
 
 cleanUpBSNulls :: B.ByteString -> B.ByteString
 cleanUpBSNulls bs | 0 `B.notElem` bs = bs
