@@ -45,7 +45,7 @@ Library
   Build-Depends: base >= 3 && < 5, mtl, HDBC>=2.2.0, parsec, utf8-string,
                  bytestring, old-time, convertible
   if flag(minTime15)
-    Build-Depends: time >= 1.5 && < 1.14
+    Build-Depends: time >= 1.5 && < 1.16
     CPP-Options: -DMIN_TIME_15
   else
     Build-Depends: time < 1.5, old-locale
@@ -63,7 +63,7 @@ Executable runtests
                      convertible, parsec, utf8-string,
                      bytestring, old-time, base >= 4.6 && < 5.0, HDBC>=2.2.6
       if flag(minTime15)
-        Build-Depends: time >= 1.5 && < 1.14
+        Build-Depends: time >= 1.5 && < 1.16
         CPP-Options: -DMIN_TIME_15
       else
         Build-Depends: time < 1.5, old-locale
