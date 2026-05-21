@@ -1,2 +1,4 @@
-*.swp
-/dist/
+dist
+*~
+dist-newstyle
+/result
